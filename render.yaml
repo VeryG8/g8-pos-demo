@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: g8-pos-demo
+    runtime: docker
+    plan: free
+    rootDir: .
+    dockerfilePath: ./src/G8.PosDemo.Web/Dockerfile
+    autoDeploy: true

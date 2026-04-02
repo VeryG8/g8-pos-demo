@@ -1,0 +1,350 @@
+@page "/"
+@using System.Globalization
+
+<PageTitle>G8 POS Demo</PageTitle>
+
+@code {
+    private readonly List<ProductCategory> _categories =
+    [
+        new("招牌茶類", [
+            new("茉莉綠茶", 35m, "M", true),
+            new("阿薩姆紅茶", 35m, "M", true),
+            new("四季青茶", 40m, "L", true),
+            new("冬瓜青茶", 45m, "L", true)
+        ]),
+        new("奶茶系列", [
+            new("珍珠奶茶", 60m, "L", false),
+            new("烏龍奶茶", 55m, "L", false),
+            new("黑糖鮮奶", 75m, "M", false),
+            new("可可歐蕾", 70m, "M", false)
+        ]),
+        new("特調系列", [
+            new("檸檬青茶", 55m, "L", true),
+            new("百香雙Q", 65m, "L", true),
+            new("葡萄柚綠", 70m, "L", true),
+            new("鳳梨冰茶", 65m, "L", true)
+        ])
+    ];
+
+    private readonly List<string> _sugarOptions = ["正常糖", "少糖", "半糖", "微糖", "無糖"];
+    private readonly List<string> _iceOptions = ["正常冰", "少冰", "微冰", "去冰", "熱"];
+    private readonly List<OrderLine> _cart = [];
+    private readonly List<CompletedOrder> _recentOrders = [];
+
+    private ProductCategory? _selectedCategory;
+    private Product? _selectedProduct;
+    private string _selectedSugar = "半糖";
+    private string _selectedIce = "少冰";
+    private bool _addPearl;
+    private bool _addCoconut;
+    private string _orderType = "外帶";
+    private string _status = "待點餐";
+    private string _searchText = string.Empty;
+    private int _nextOrderNumber = 1001;
+    private string _currentOrderCode = "A1001";
+
+    protected override void OnInitialized()
+    {
+        _selectedCategory = _categories.First();
+    }
+
+    private void SelectCategory(ProductCategory category)
+    {
+        _selectedCategory = category;
+        _selectedProduct = null;
+    }
+
+    private void SelectProduct(Product product)
+    {
+        _selectedProduct = product;
+        _selectedSugar = product.IsTea ? "微糖" : "半糖";
+        _selectedIce = product.IsTea ? "少冰" : "正常冰";
+        _addPearl = false;
+        _addCoconut = false;
+    }
+
+    private IEnumerable<Product> FilteredProducts =>
+        (_selectedCategory?.Products ?? [])
+            .Where(p => string.IsNullOrWhiteSpace(_searchText) || p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+
+    private void AddSelectedToCart()
+    {
+        if (_selectedProduct is null)
+        {
+            return;
+        }
+
+        var toppings = new List<string>();
+        decimal toppingTotal = 0m;
+
+        if (_addPearl)
+        {
+            toppings.Add("珍珠");
+            toppingTotal += 10m;
+        }
+
+        if (_addCoconut)
+        {
+            toppings.Add("椰果");
+            toppingTotal += 10m;
+        }
+
+        _cart.Add(new OrderLine(
+            _selectedProduct.Name,
+            _selectedProduct.DefaultSize,
+            _selectedSugar,
+            _selectedIce,
+            toppings,
+            _selectedProduct.Price + toppingTotal,
+            1));
+
+        _status = $"已加入：{_selectedProduct.Name}";
+        _selectedProduct = null;
+    }
+
+    private void IncreaseQuantity(OrderLine line) => line.Quantity++;
+
+    private void DecreaseQuantity(OrderLine line)
+    {
+        line.Quantity--;
+        if (line.Quantity <= 0)
+        {
+            _cart.Remove(line);
+        }
+    }
+
+    private void ClearCart()
+    {
+        _cart.Clear();
+        _status = "已清空訂單";
+    }
+
+    private void Checkout()
+    {
+        if (_cart.Count == 0)
+        {
+            _status = "購物車是空的，無法結帳。";
+            return;
+        }
+
+        var summary = string.Join("、", _cart.Select(x => $"{x.Name}x{x.Quantity}"));
+        _recentOrders.Insert(0, new CompletedOrder(_currentOrderCode, DateTime.Now, _orderType, summary, TotalAmount));
+        if (_recentOrders.Count > 5)
+        {
+            _recentOrders.RemoveAt(_recentOrders.Count - 1);
+        }
+
+        _status = $"結帳完成：{_currentOrderCode} / {TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}";
+        _cart.Clear();
+        _nextOrderNumber++;
+        _currentOrderCode = $"A{_nextOrderNumber}";
+    }
+
+    private decimal TotalAmount => _cart.Sum(x => x.Subtotal);
+    private int TotalQuantity => _cart.Sum(x => x.Quantity);
+
+    private sealed record ProductCategory(string Name, List<Product> Products);
+    private sealed record Product(string Name, decimal Price, string DefaultSize, bool IsTea);
+    private sealed record CompletedOrder(string OrderCode, DateTime CreatedAt, string OrderType, string Summary, decimal Amount);
+
+    private sealed class OrderLine(string name, string size, string sugar, string ice, List<string> toppings, decimal unitPrice, int quantity)
+    {
+        public string Name { get; } = name;
+        public string Size { get; } = size;
+        public string Sugar { get; } = sugar;
+        public string Ice { get; } = ice;
+        public List<string> Toppings { get; } = toppings;
+        public decimal UnitPrice { get; } = unitPrice;
+        public int Quantity { get; set; } = quantity;
+        public decimal Subtotal => UnitPrice * Quantity;
+        public string ToppingLabel => Toppings.Count == 0 ? "無加料" : string.Join("、", Toppings);
+    }
+}
+
+<div class="pos-shell">
+    <div class="pos-header">
+        <div>
+            <div class="eyebrow">櫃台模式 / Beverage Counter Demo</div>
+            <h1>G8 POS 櫃台 Demo</h1>
+            <p>第二版骨架：商品搜尋、訂單號、近期訂單與更接近櫃台操作的版面。</p>
+        </div>
+        <div class="status-card">
+            <span>目前訂單</span>
+            <strong class="order-code">@_currentOrderCode</strong>
+            <label>訂單型態</label>
+            <select @bind="_orderType">
+                <option>外帶</option>
+                <option>內用</option>
+            </select>
+            <div class="status-text">@_status</div>
+        </div>
+    </div>
+
+    <div class="summary-strip">
+        <div class="summary-card accent-orange">
+            <span>杯數</span>
+            <strong>@TotalQuantity</strong>
+        </div>
+        <div class="summary-card accent-green">
+            <span>總金額</span>
+            <strong>@TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+        </div>
+        <div class="summary-card accent-blue">
+            <span>最近狀態</span>
+            <strong>@_status</strong>
+        </div>
+    </div>
+
+    <div class="pos-grid">
+        <section class="panel categories-panel">
+            <div class="section-header">
+                <h2>商品區</h2>
+                <input class="search-box" @bind="_searchText" @bind:event="oninput" placeholder="搜尋飲料名稱" />
+            </div>
+
+            <div class="category-list">
+                @foreach (var category in _categories)
+                {
+                    <button class="category-chip @(category == _selectedCategory ? "active" : null)" @onclick="() => SelectCategory(category)">
+                        @category.Name
+                    </button>
+                }
+            </div>
+
+            <div class="product-grid">
+                @foreach (var product in FilteredProducts)
+                {
+                    <button class="product-card @(product == _selectedProduct ? "active" : null)" @onclick="() => SelectProduct(product)">
+                        <span>@product.Name</span>
+                        <small>@product.DefaultSize / @(product.IsTea ? "茶飲" : "奶系")</small>
+                        <strong>@product.Price.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+                    </button>
+                }
+            </div>
+        </section>
+
+        <section class="panel customize-panel">
+            <h2>客製設定</h2>
+            @if (_selectedProduct is null)
+            {
+                <div class="empty-state">先選一杯飲料，再調整糖冰與加料。</div>
+            }
+            else
+            {
+                <div class="selected-product">
+                    <div>
+                        <div class="eyebrow">已選商品</div>
+                        <h3>@_selectedProduct.Name</h3>
+                    </div>
+                    <div class="selected-price">@_selectedProduct.Price.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</div>
+                </div>
+
+                <div class="form-grid">
+                    <div>
+                        <label>糖度</label>
+                        <select @bind="_selectedSugar">
+                            @foreach (var sugar in _sugarOptions)
+                            {
+                                <option value="@sugar">@sugar</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div>
+                        <label>冰量</label>
+                        <select @bind="_selectedIce">
+                            @foreach (var ice in _iceOptions)
+                            {
+                                <option value="@ice">@ice</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <label>加料</label>
+                <div class="topping-list">
+                    <label><input type="checkbox" @bind="_addPearl" /> 珍珠 (+10)</label>
+                    <label><input type="checkbox" @bind="_addCoconut" /> 椰果 (+10)</label>
+                </div>
+
+                <button class="primary-action" @onclick="AddSelectedToCart">加入訂單</button>
+            }
+
+            <div class="recent-orders-box">
+                <div class="section-header compact">
+                    <h2>最近完成訂單</h2>
+                </div>
+
+                @if (_recentOrders.Count == 0)
+                {
+                    <div class="empty-state small">還沒有完成訂單。</div>
+                }
+                else
+                {
+                    <div class="recent-orders-list">
+                        @foreach (var order in _recentOrders)
+                        {
+                            <div class="recent-order-item">
+                                <div>
+                                    <strong>@order.OrderCode</strong>
+                                    <div class="meta">@order.CreatedAt:HH:mm / @order.OrderType</div>
+                                    <div class="meta">@order.Summary</div>
+                                </div>
+                                <strong>@order.Amount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="panel cart-panel">
+            <div class="cart-header">
+                <div>
+                    <h2>當前訂單</h2>
+                    <div class="meta">訂單號：@_currentOrderCode</div>
+                </div>
+                <button class="ghost-action" @onclick="ClearCart">清空</button>
+            </div>
+
+            @if (_cart.Count == 0)
+            {
+                <div class="empty-state">購物車目前是空的。</div>
+            }
+            else
+            {
+                <div class="cart-list">
+                    @foreach (var line in _cart)
+                    {
+                        <div class="cart-line">
+                            <div>
+                                <strong>@line.Name</strong>
+                                <div class="meta">@line.Size / @line.Sugar / @line.Ice / @line.ToppingLabel</div>
+                            </div>
+                            <div class="line-actions">
+                                <button @onclick="() => DecreaseQuantity(line)">-</button>
+                                <span>@line.Quantity</span>
+                                <button @onclick="() => IncreaseQuantity(line)">+</button>
+                            </div>
+                            <strong>@line.Subtotal.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="checkout-box">
+                <div class="checkout-summary">
+                    <div class="total-row">
+                        <span>總杯數</span>
+                        <strong>@TotalQuantity</strong>
+                    </div>
+                    <div class="total-row emphasis">
+                        <span>應收金額</span>
+                        <strong>@TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+                    </div>
+                </div>
+                <button class="checkout-action" @onclick="Checkout">模擬結帳</button>
+            </div>
+        </section>
+    </div>
+</div>
