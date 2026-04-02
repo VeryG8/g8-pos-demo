@@ -1,33 +1,45 @@
 @page "/admin/products"
 @using System.Globalization
+@using G8.PosDemo.Web.Data
+@using Microsoft.EntityFrameworkCore
+@inject PosDbContext Db
 
 <PageTitle>商品管理</PageTitle>
 
 @code {
-    private readonly List<ProductRow> _products =
-    [
-        new("招牌茶類", "茉莉綠茶", 35m, true),
-        new("招牌茶類", "四季青茶", 40m, true),
-        new("奶茶系列", "珍珠奶茶", 60m, true),
-        new("奶茶系列", "黑糖鮮奶", 75m, true),
-        new("特調系列", "葡萄柚綠", 70m, false)
-    ];
+    private readonly List<ProductRow> _products = [];
+    private string _status = "讀取商品中...";
 
-    private string _status = "這是 Demo 後台商品頁，可再接真資料。";
-
-    private void Toggle(ProductRow row)
+    protected override async Task OnInitializedAsync()
     {
-        row.Enabled = !row.Enabled;
-        _status = $"已模擬切換商品狀態：{row.Name}";
+        await LoadProductsAsync();
     }
 
-    private sealed class ProductRow(string category, string name, decimal price, bool enabled)
+    private async Task LoadProductsAsync()
     {
-        public string Category { get; } = category;
-        public string Name { get; } = name;
-        public decimal Price { get; } = price;
-        public bool Enabled { get; set; } = enabled;
+        var rows = await Db.Products
+            .AsNoTracking()
+            .Include(x => x.Category)
+            .OrderBy(x => x.CategoryId)
+            .ThenBy(x => x.Name)
+            .Select(x => new ProductRow(x.Id, x.Category!.Name, x.Name, x.BasePrice, x.IsEnabled))
+            .ToListAsync();
+
+        _products.Clear();
+        _products.AddRange(rows);
+        _status = $"已從資料庫載入 {_products.Count} 筆商品。";
     }
+
+    private async Task ToggleAsync(ProductRow row)
+    {
+        var entity = await Db.Products.FirstAsync(x => x.Id == row.Id);
+        entity.IsEnabled = !entity.IsEnabled;
+        await Db.SaveChangesAsync();
+        await LoadProductsAsync();
+        _status = $"已更新商品狀態：{row.Name}";
+    }
+
+    private sealed record ProductRow(int Id, string Category, string Name, decimal Price, bool Enabled);
 }
 
 <div class="admin-page">
@@ -53,7 +65,7 @@
                 <span>@row.Category</span>
                 <strong>@row.Name</strong>
                 <span>@row.Price.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</span>
-                <button class="mini-action @(row.Enabled ? "enabled" : "disabled")" @onclick="() => Toggle(row)">
+                <button class="mini-action @(row.Enabled ? "enabled" : "disabled")" @onclick="() => ToggleAsync(row)">
                     @(row.Enabled ? "上架中" : "已下架")
                 </button>
             </div>

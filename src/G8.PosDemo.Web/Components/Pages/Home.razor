@@ -1,39 +1,21 @@
 @page "/"
 @using System.Globalization
+@using G8.PosDemo.Web.Data
+@using Microsoft.EntityFrameworkCore
+@inject PosDbContext Db
 
 <PageTitle>G8 POS Demo</PageTitle>
 
 @code {
-    private readonly List<ProductCategory> _categories =
-    [
-        new("招牌茶類", [
-            new("茉莉綠茶", 35m, ["M", "L"], true),
-            new("阿薩姆紅茶", 35m, ["M", "L"], true),
-            new("四季青茶", 40m, ["M", "L"], true),
-            new("冬瓜青茶", 45m, ["M", "L"], true)
-        ]),
-        new("奶茶系列", [
-            new("珍珠奶茶", 60m, ["L"], false),
-            new("烏龍奶茶", 55m, ["M", "L"], false),
-            new("黑糖鮮奶", 75m, ["M"], false),
-            new("可可歐蕾", 70m, ["M"], false)
-        ]),
-        new("特調系列", [
-            new("檸檬青茶", 55m, ["L"], true),
-            new("百香雙Q", 65m, ["L"], true),
-            new("葡萄柚綠", 70m, ["L"], true),
-            new("鳳梨冰茶", 65m, ["L"], true)
-        ])
-    ];
-
     private readonly List<string> _sugarOptions = ["正常糖", "少糖", "半糖", "微糖", "無糖"];
     private readonly List<string> _iceOptions = ["正常冰", "少冰", "微冰", "去冰", "熱"];
     private readonly List<string> _paymentOptions = ["現金", "Line Pay", "街口", "信用卡"];
     private readonly List<OrderLine> _cart = [];
     private readonly List<CompletedOrder> _recentOrders = [];
+    private readonly List<ProductCategoryViewModel> _categories = [];
 
-    private ProductCategory? _selectedCategory;
-    private Product? _selectedProduct;
+    private ProductCategoryViewModel? _selectedCategory;
+    private ProductViewModel? _selectedProduct;
     private string _selectedSize = "M";
     private string _selectedSugar = "半糖";
     private string _selectedIce = "少冰";
@@ -48,18 +30,40 @@
     private int _nextOrderNumber = 1001;
     private string _currentOrderCode = "A1001";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _selectedCategory = _categories.First();
+        var categories = await Db.ProductCategories
+            .AsNoTracking()
+            .Include(x => x.Products)
+            .OrderBy(x => x.SortOrder)
+            .ToListAsync();
+
+        _categories.Clear();
+        _categories.AddRange(categories.Select(category => new ProductCategoryViewModel(
+            category.Id,
+            category.Name,
+            category.Products
+                .Where(p => p.IsEnabled)
+                .OrderBy(p => p.Name)
+                .Select(product => new ProductViewModel(
+                    product.Id,
+                    product.Name,
+                    product.BasePrice,
+                    product.SizeOptions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
+                    product.IsTea))
+                .ToList())));
+
+        _selectedCategory = _categories.FirstOrDefault();
+        _status = _categories.Count == 0 ? "目前沒有上架商品。" : "商品已從資料庫載入。";
     }
 
-    private void SelectCategory(ProductCategory category)
+    private void SelectCategory(ProductCategoryViewModel category)
     {
         _selectedCategory = category;
         _selectedProduct = null;
     }
 
-    private void SelectProduct(Product product)
+    private void SelectProduct(ProductViewModel product)
     {
         _selectedProduct = product;
         _selectedSize = product.Sizes.First();
@@ -69,7 +73,7 @@
         _addCoconut = false;
     }
 
-    private IEnumerable<Product> FilteredProducts =>
+    private IEnumerable<ProductViewModel> FilteredProducts =>
         (_selectedCategory?.Products ?? [])
             .Where(p => string.IsNullOrWhiteSpace(_searchText) || p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
 
@@ -163,8 +167,8 @@
     private decimal TotalAmount => _cart.Sum(x => x.Subtotal);
     private int TotalQuantity => _cart.Sum(x => x.Quantity);
 
-    private sealed record ProductCategory(string Name, List<Product> Products);
-    private sealed record Product(string Name, decimal Price, List<string> Sizes, bool IsTea);
+    private sealed record ProductCategoryViewModel(int Id, string Name, List<ProductViewModel> Products);
+    private sealed record ProductViewModel(int Id, string Name, decimal Price, List<string> Sizes, bool IsTea);
     private sealed record CompletedOrder(string OrderCode, DateTime CreatedAt, string Payment, string Summary, decimal Amount);
 
     private sealed class OrderLine(string name, string size, string sugar, string ice, List<string> toppings, decimal unitPrice, int quantity, string note)
