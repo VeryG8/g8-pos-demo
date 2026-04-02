@@ -1,0 +1,62 @@
+@page "/admin/products"
+@using System.Globalization
+
+<PageTitle>商品管理</PageTitle>
+
+@code {
+    private readonly List<ProductRow> _products =
+    [
+        new("招牌茶類", "茉莉綠茶", 35m, true),
+        new("招牌茶類", "四季青茶", 40m, true),
+        new("奶茶系列", "珍珠奶茶", 60m, true),
+        new("奶茶系列", "黑糖鮮奶", 75m, true),
+        new("特調系列", "葡萄柚綠", 70m, false)
+    ];
+
+    private string _status = "這是 Demo 後台商品頁，可再接真資料。";
+
+    private void Toggle(ProductRow row)
+    {
+        row.Enabled = !row.Enabled;
+        _status = $"已模擬切換商品狀態：{row.Name}";
+    }
+
+    private sealed class ProductRow(string category, string name, decimal price, bool enabled)
+    {
+        public string Category { get; } = category;
+        public string Name { get; } = name;
+        public decimal Price { get; } = price;
+        public bool Enabled { get; set; } = enabled;
+    }
+}
+
+<div class="admin-page">
+    <div class="admin-header">
+        <div>
+            <div class="eyebrow">Admin / Products</div>
+            <h1>商品管理</h1>
+        </div>
+        <div class="admin-status">@_status</div>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-table-header">
+            <strong>分類</strong>
+            <strong>商品</strong>
+            <strong>售價</strong>
+            <strong>狀態</strong>
+        </div>
+
+        @foreach (var row in _products)
+        {
+            <div class="admin-table-row">
+                <span>@row.Category</span>
+                <strong>@row.Name</strong>
+                <span>@row.Price.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</span>
+                <button class="mini-action @(row.Enabled ? "enabled" : "disabled")" @onclick="() => Toggle(row)">
+                    @(row.Enabled ? "上架中" : "已下架")
+                </button>
+            </div>
+        }
+    </div>
+</div>
