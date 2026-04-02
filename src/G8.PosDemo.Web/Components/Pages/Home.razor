@@ -30,6 +30,12 @@
     private readonly List<string> _iceOptions = ["正常冰", "少冰", "微冰", "去冰", "熱"];
     private readonly List<OrderLine> _cart = [];
     private readonly List<CompletedOrder> _recentOrders = [];
+    private readonly List<ReportCard> _reportCards =
+    [
+        new("本日營業額", 4280m, "較昨日 +12%"),
+        new("今日訂單數", 67m, "午餐尖峰 12:00-13:00"),
+        new("人氣商品", 18m, "珍珠奶茶 / 18 杯")
+    ];
 
     private ProductCategory? _selectedCategory;
     private Product? _selectedProduct;
@@ -140,12 +146,32 @@
         _currentOrderCode = $"A{_nextOrderNumber}";
     }
 
+    private void PrintKitchenTicket()
+    {
+        _status = _cart.Count == 0
+            ? "目前沒有可列印的訂單。"
+            : $"已模擬送出廚房單：{_currentOrderCode}";
+    }
+
+    private void PrintSticker()
+    {
+        _status = _cart.Count == 0
+            ? "目前沒有可列印的杯貼。"
+            : $"已模擬送出杯貼列印：{_currentOrderCode}";
+    }
+
+    private void ShowReportHint()
+    {
+        _status = "目前是 Demo 報表卡，下一版可做成完整營業報表頁。";
+    }
+
     private decimal TotalAmount => _cart.Sum(x => x.Subtotal);
     private int TotalQuantity => _cart.Sum(x => x.Quantity);
 
     private sealed record ProductCategory(string Name, List<Product> Products);
     private sealed record Product(string Name, decimal Price, string DefaultSize, bool IsTea);
     private sealed record CompletedOrder(string OrderCode, DateTime CreatedAt, string OrderType, string Summary, decimal Amount);
+    private sealed record ReportCard(string Title, decimal Value, string Note);
 
     private sealed class OrderLine(string name, string size, string sugar, string ice, List<string> toppings, decimal unitPrice, int quantity)
     {
@@ -166,7 +192,7 @@
         <div>
             <div class="eyebrow">櫃台模式 / Beverage Counter Demo</div>
             <h1>G8 POS 櫃台 Demo</h1>
-            <p>第二版骨架：商品搜尋、訂單號、近期訂單與更接近櫃台操作的版面。</p>
+            <p>第三版骨架：糖冰改按鈕、加入報表卡與印單動作區。</p>
         </div>
         <div class="status-card">
             <span>目前訂單</span>
@@ -193,6 +219,17 @@
             <span>最近狀態</span>
             <strong>@_status</strong>
         </div>
+    </div>
+
+    <div class="report-strip">
+        @foreach (var card in _reportCards)
+        {
+            <button class="report-card" @onclick="ShowReportHint">
+                <span>@card.Title</span>
+                <strong>@(card.Title == "本日營業額" ? card.Value.ToString("C0", CultureInfo.GetCultureInfo("zh-TW")) : card.Value.ToString("0"))</strong>
+                <small>@card.Note</small>
+            </button>
+        }
     </div>
 
     <div class="pos-grid">
@@ -239,26 +276,20 @@
                     <div class="selected-price">@_selectedProduct.Price.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</div>
                 </div>
 
-                <div class="form-grid">
-                    <div>
-                        <label>糖度</label>
-                        <select @bind="_selectedSugar">
-                            @foreach (var sugar in _sugarOptions)
-                            {
-                                <option value="@sugar">@sugar</option>
-                            }
-                        </select>
-                    </div>
+                <label>糖度</label>
+                <div class="option-chip-group">
+                    @foreach (var sugar in _sugarOptions)
+                    {
+                        <button type="button" class="option-chip @(sugar == _selectedSugar ? "active" : null)" @onclick="() => _selectedSugar = sugar">@sugar</button>
+                    }
+                </div>
 
-                    <div>
-                        <label>冰量</label>
-                        <select @bind="_selectedIce">
-                            @foreach (var ice in _iceOptions)
-                            {
-                                <option value="@ice">@ice</option>
-                            }
-                        </select>
-                    </div>
+                <label>冰量</label>
+                <div class="option-chip-group">
+                    @foreach (var ice in _iceOptions)
+                    {
+                        <button type="button" class="option-chip @(ice == _selectedIce ? "active" : null)" @onclick="() => _selectedIce = ice">@ice</button>
+                    }
                 </div>
 
                 <label>加料</label>
@@ -267,7 +298,11 @@
                     <label><input type="checkbox" @bind="_addCoconut" /> 椰果 (+10)</label>
                 </div>
 
-                <button class="primary-action" @onclick="AddSelectedToCart">加入訂單</button>
+                <div class="action-grid">
+                    <button class="primary-action" @onclick="AddSelectedToCart">加入訂單</button>
+                    <button class="secondary-action" @onclick="PrintKitchenTicket">印廚房單</button>
+                    <button class="secondary-action" @onclick="PrintSticker">印杯貼</button>
+                </div>
             }
 
             <div class="recent-orders-box">

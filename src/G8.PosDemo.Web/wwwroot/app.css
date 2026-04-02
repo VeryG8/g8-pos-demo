@@ -76,14 +76,16 @@ button, select, input {
     border-radius: 12px;
 }
 
-.summary-strip {
+.summary-strip,
+.report-strip {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 14px;
     margin-bottom: 18px;
 }
 
-.summary-card {
+.summary-card,
+.report-card {
     background: white;
     border-radius: 16px;
     padding: 16px 18px;
@@ -93,11 +95,20 @@ button, select, input {
     gap: 8px;
 }
 
-.summary-card span {
+.report-card {
+    border: none;
+    text-align: left;
+    cursor: pointer;
+}
+
+.summary-card span,
+.report-card span,
+.report-card small {
     color: #64748b;
 }
 
-.summary-card strong {
+.summary-card strong,
+.report-card strong {
     font-size: 1.4rem;
 }
 
@@ -152,7 +163,8 @@ button, select, input {
     background: white;
 }
 
-.category-list {
+.category-list,
+.option-chip-group {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -162,9 +174,11 @@ button, select, input {
 .category-chip,
 .product-card,
 .primary-action,
+.secondary-action,
 .checkout-action,
 .ghost-action,
-.line-actions button {
+.line-actions button,
+.option-chip {
     border: none;
     border-radius: 14px;
     cursor: pointer;
@@ -174,9 +188,12 @@ button, select, input {
 .category-chip:hover,
 .product-card:hover,
 .primary-action:hover,
+.secondary-action:hover,
 .checkout-action:hover,
 .ghost-action:hover,
-.line-actions button:hover {
+.line-actions button:hover,
+.option-chip:hover,
+.report-card:hover {
     transform: translateY(-1px);
 }
 
@@ -217,23 +234,12 @@ button, select, input {
     background: #fff7ed;
 }
 
-.customize-panel label,
-.customize-panel select {
+.customize-panel label {
     display: block;
     width: 100%;
-}
-
-.customize-panel label {
     margin-top: 12px;
     margin-bottom: 6px;
     font-weight: 600;
-}
-
-.customize-panel select {
-    border: 1px solid #cbd5e1;
-    border-radius: 12px;
-    padding: 10px 12px;
-    background: white;
 }
 
 .form-grid {
@@ -263,27 +269,50 @@ button, select, input {
     color: #c2410c;
 }
 
+.option-chip {
+    background: #e2e8f0;
+    padding: 10px 14px;
+    min-width: 72px;
+}
+
+.option-chip.active {
+    background: #2563eb;
+    color: white;
+}
+
 .topping-list {
     display: grid;
     gap: 8px;
     margin-top: 8px;
 }
 
+.action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+}
+
 .primary-action,
+.secondary-action,
 .checkout-action {
     width: 100%;
     padding: 14px 16px;
     color: white;
     font-weight: 700;
-    margin-top: 16px;
 }
 
 .primary-action {
     background: #ea580c;
 }
 
+.secondary-action {
+    background: #475569;
+}
+
 .checkout-action {
     background: #0284c7;
+    margin-top: 16px;
 }
 
 .cart-header,
@@ -375,10 +404,15 @@ button, select, input {
         grid-template-columns: 1fr;
     }
 
-    .pos-header,
-    .summary-strip {
-        grid-template-columns: 1fr;
+    .pos-header {
         flex-direction: column;
+    }
+
+    .summary-strip,
+    .report-strip,
+    .form-grid,
+    .action-grid {
+        grid-template-columns: 1fr;
     }
 
     .status-card,
@@ -386,18 +420,9 @@ button, select, input {
         min-width: unset;
         width: 100%;
     }
-
-    .summary-strip {
-        display: grid;
-    }
 }
 
 @media (max-width: 720px) {
-    .form-grid,
-    .summary-strip {
-        grid-template-columns: 1fr;
-    }
-
     .section-header,
     .selected-product,
     .cart-line,
