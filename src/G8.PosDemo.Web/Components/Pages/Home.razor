@@ -1,6 +1,7 @@
 @page "/"
 @using System.Globalization
 @using G8.PosDemo.Web.Data
+@using G8.PosDemo.Web.Data.Entities
 @using Microsoft.EntityFrameworkCore
 @inject PosDbContext Db
 
@@ -32,6 +33,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadProductsAsync();
+        await LoadRecentOrdersAsync();
+    }
+
+    private async Task LoadProductsAsync()
+    {
         var categories = await Db.ProductCategories
             .AsNoTracking()
             .Include(x => x.Products)
@@ -53,8 +60,31 @@
                     product.IsTea))
                 .ToList())));
 
-        _selectedCategory = _categories.FirstOrDefault();
+        _selectedCategory ??= _categories.FirstOrDefault();
         _status = _categories.Count == 0 ? "目前沒有上架商品。" : "商品已從資料庫載入。";
+    }
+
+    private async Task LoadRecentOrdersAsync()
+    {
+        var orders = await Db.Orders
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(6)
+            .ToListAsync();
+
+        _recentOrders.Clear();
+        _recentOrders.AddRange(orders.Select(x => new CompletedOrder(x.OrderCode, x.CreatedAt.ToLocalTime(), x.PaymentMethod, x.OrderSummary ?? string.Empty, x.TotalAmount)));
+
+        var latestCode = orders
+            .Select(x => x.OrderCode)
+            .Where(x => x.StartsWith("A") && int.TryParse(x[1..], out _))
+            .Select(x => int.Parse(x[1..]))
+            .DefaultIfEmpty(1000)
+            .Max();
+
+        _nextOrderNumber = latestCode + 1;
+        _currentOrderCode = $"A{_nextOrderNumber}";
+        _pickupNumber = (_nextOrderNumber - 1000).ToString("000");
     }
 
     private void SelectCategory(ProductCategoryViewModel category)
@@ -135,7 +165,7 @@
         _status = "已清空訂單";
     }
 
-    private void Checkout()
+    private async Task CheckoutAsync()
     {
         if (_cart.Count == 0)
         {
@@ -144,19 +174,52 @@
         }
 
         var summary = string.Join("、", _cart.Select(x => $"{x.Name}x{x.Quantity}"));
-        _recentOrders.Insert(0, new CompletedOrder(_currentOrderCode, DateTime.Now, _selectedPayment, summary, TotalAmount));
-        if (_recentOrders.Count > 6)
+
+        CustomerEntity? customer = null;
+        if (!string.IsNullOrWhiteSpace(_customerPhone))
         {
-            _recentOrders.RemoveAt(_recentOrders.Count - 1);
+            customer = await Db.Customers.FirstOrDefaultAsync(x => x.Phone == _customerPhone);
+            if (customer is null)
+            {
+                customer = new CustomerEntity { Phone = _customerPhone, DisplayName = _customerPhone, LoyaltyPoints = 0 };
+                Db.Customers.Add(customer);
+            }
         }
+
+        var order = new OrderEntity
+        {
+            OrderCode = _currentOrderCode,
+            PaymentMethod = _selectedPayment,
+            CustomerPhone = _customerPhone,
+            TotalAmount = TotalAmount,
+            CreatedAt = DateTime.UtcNow,
+            OrderSummary = summary
+        };
+
+        foreach (var line in _cart)
+        {
+            order.Items.Add(new OrderItemEntity
+            {
+                ProductName = line.Name,
+                Size = line.Size,
+                Sugar = line.Sugar,
+                Ice = line.Ice,
+                Toppings = line.ToppingLabel,
+                Note = line.Note,
+                Quantity = line.Quantity,
+                UnitPrice = line.UnitPrice
+            });
+        }
+
+        Db.Orders.Add(order);
+        await Db.SaveChangesAsync();
 
         _status = $"結帳完成：{_currentOrderCode} / {_selectedPayment} / {TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}";
         _cart.Clear();
-        _nextOrderNumber++;
-        _currentOrderCode = $"A{_nextOrderNumber}";
-        _pickupNumber = (_nextOrderNumber - 1000).ToString("000");
         _customerPhone = string.Empty;
         _note = string.Empty;
+
+        await LoadRecentOrdersAsync();
     }
 
     private void PrintKitchenTicket() => _status = _cart.Count == 0 ? "目前沒有可列印的訂單。" : $"已模擬送出廚房單：{_currentOrderCode}";
@@ -368,7 +431,7 @@
                     <div class="total-row"><span>付款方式</span><strong>@_selectedPayment</strong></div>
                     <div class="total-row emphasis"><span>應收金額</span><strong>@TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                 </div>
-                <button class="checkout-action" @onclick="Checkout">完成結帳</button>
+                <button class="checkout-action" @onclick="CheckoutAsync">完成結帳</button>
             </div>
         </section>
     </div>

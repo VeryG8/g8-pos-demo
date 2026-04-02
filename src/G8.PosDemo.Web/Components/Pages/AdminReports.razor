@@ -1,17 +1,38 @@
 @page "/admin/reports"
 @using System.Globalization
+@using G8.PosDemo.Web.Data
+@using Microsoft.EntityFrameworkCore
+@inject PosDbContext Db
 
 <PageTitle>營業報表</PageTitle>
 
 @code {
-    private readonly List<ReportBlock> _blocks =
-    [
-        new("本日營業額", 4280m, "較昨日 +12%"),
-        new("今日訂單數", 67m, "平均客單 63 元"),
-        new("人氣商品", 18m, "珍珠奶茶 18 杯")
-    ];
+    private decimal _dailyRevenue;
+    private int _orderCount;
+    private string _topProduct = "尚無資料";
 
-    private sealed record ReportBlock(string Title, decimal Value, string Note);
+    protected override async Task OnInitializedAsync()
+    {
+        var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
+
+        var orders = await Db.Orders
+            .AsNoTracking()
+            .Where(x => x.CreatedAt >= today && x.CreatedAt < tomorrow)
+            .ToListAsync();
+
+        _dailyRevenue = orders.Sum(x => x.TotalAmount);
+        _orderCount = orders.Count;
+
+        var topItem = await Db.OrderItems
+            .AsNoTracking()
+            .GroupBy(x => x.ProductName)
+            .Select(g => new { ProductName = g.Key, Qty = g.Sum(x => x.Quantity) })
+            .OrderByDescending(x => x.Qty)
+            .FirstOrDefaultAsync();
+
+        _topProduct = topItem is null ? "尚無資料" : $"{topItem.ProductName} / {topItem.Qty} 杯";
+    }
 }
 
 <div class="admin-page">
@@ -23,13 +44,22 @@
     </div>
 
     <div class="report-grid">
-        @foreach (var block in _blocks)
-        {
-            <div class="report-panel">
-                <span>@block.Title</span>
-                <strong>@(block.Title == "本日營業額" ? block.Value.ToString("C0", CultureInfo.GetCultureInfo("zh-TW")) : block.Value.ToString("0"))</strong>
-                <small>@block.Note</small>
-            </div>
-        }
+        <div class="report-panel">
+            <span>本日營業額</span>
+            <strong>@_dailyRevenue.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+            <small>由資料庫訂單計算</small>
+        </div>
+
+        <div class="report-panel">
+            <span>今日訂單數</span>
+            <strong>@_orderCount</strong>
+            <small>今日已完成訂單</small>
+        </div>
+
+        <div class="report-panel">
+            <span>人氣商品</span>
+            <strong>@_topProduct</strong>
+            <small>依歷史訂單項目統計</small>
+        </div>
     </div>
 </div>
