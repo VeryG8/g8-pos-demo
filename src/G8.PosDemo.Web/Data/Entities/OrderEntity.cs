@@ -8,6 +8,7 @@ public class OrderEntity
     public string? CustomerPhone { get; set; }
     public decimal TotalAmount { get; set; }
     public string? OrderSummary { get; set; }
+    public string Status { get; set; } = "Completed";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<OrderItemEntity> Items { get; set; } = new List<OrderItemEntity>();

@@ -1,0 +1,84 @@
+@page "/admin/categories"
+@using G8.PosDemo.Web.Data
+@using G8.PosDemo.Web.Data.Entities
+@using Microsoft.EntityFrameworkCore
+@inject PosDbContext Db
+
+<PageTitle>分類管理</PageTitle>
+
+@code {
+    private readonly List<ProductCategoryEntity> _categories = [];
+    private string _status = "讀取分類中...";
+    private string _newCategoryName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var categories = await Db.ProductCategories
+            .AsNoTracking()
+            .OrderBy(x => x.SortOrder)
+            .ToListAsync();
+
+        _categories.Clear();
+        _categories.AddRange(categories);
+        _status = $"已載入 {_categories.Count} 個分類。";
+    }
+
+    private async Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newCategoryName))
+        {
+            _status = "請先輸入分類名稱。";
+            return;
+        }
+
+        var nextSort = _categories.Count == 0 ? 1 : _categories.Max(x => x.SortOrder) + 1;
+        Db.ProductCategories.Add(new ProductCategoryEntity
+        {
+            Name = _newCategoryName.Trim(),
+            SortOrder = nextSort
+        });
+
+        await Db.SaveChangesAsync();
+        _newCategoryName = string.Empty;
+        await LoadAsync();
+        _status = "已新增分類。";
+    }
+}
+
+<div class="admin-page">
+    <div class="admin-header">
+        <div>
+            <div class="eyebrow">Admin / Categories</div>
+            <h1>分類管理</h1>
+        </div>
+        <div class="admin-status">@_status</div>
+    </div>
+
+    <div class="admin-layout-grid">
+        <div class="admin-card form-card">
+            <h2>新增分類</h2>
+            <input class="admin-input" @bind="_newCategoryName" placeholder="例如：季節限定" />
+            <button class="primary-action" @onclick="AddAsync">新增分類</button>
+        </div>
+
+        <div class="admin-card">
+            <div class="admin-table-header">
+                <strong>排序</strong>
+                <strong>名稱</strong>
+            </div>
+
+            @foreach (var category in _categories)
+            {
+                <div class="admin-table-row">
+                    <span>@category.SortOrder</span>
+                    <strong>@category.Name</strong>
+                </div>
+            }
+        </div>
+    </div>
+</div>
