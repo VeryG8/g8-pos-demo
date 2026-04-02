@@ -1,6 +1,7 @@
 @page "/admin/products"
 @using System.Globalization
 @using G8.PosDemo.Web.Data
+@using G8.PosDemo.Web.Data.Entities
 @using Microsoft.EntityFrameworkCore
 @inject PosDbContext Db
 
@@ -8,11 +9,34 @@
 
 @code {
     private readonly List<ProductRow> _products = [];
+    private readonly List<CategoryOption> _categories = [];
+
+    private ProductFormModel _form = new();
     private string _status = "讀取商品中...";
+    private bool _isEditMode;
+    private int? _editingId;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadCategoriesAsync();
         await LoadProductsAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        var categories = await Db.ProductCategories
+            .AsNoTracking()
+            .OrderBy(x => x.SortOrder)
+            .Select(x => new CategoryOption(x.Id, x.Name))
+            .ToListAsync();
+
+        _categories.Clear();
+        _categories.AddRange(categories);
+
+        if (_categories.Count > 0 && _form.CategoryId == 0)
+        {
+            _form.CategoryId = _categories[0].Id;
+        }
     }
 
     private async Task LoadProductsAsync()
@@ -22,7 +46,7 @@
             .Include(x => x.Category)
             .OrderBy(x => x.CategoryId)
             .ThenBy(x => x.Name)
-            .Select(x => new ProductRow(x.Id, x.Category!.Name, x.Name, x.BasePrice, x.IsEnabled))
+            .Select(x => new ProductRow(x.Id, x.Category!.Name, x.CategoryId, x.Name, x.BasePrice, x.SizeOptions, x.IsTea, x.IsEnabled))
             .ToListAsync();
 
         _products.Clear();
@@ -39,7 +63,86 @@
         _status = $"已更新商品狀態：{row.Name}";
     }
 
-    private sealed record ProductRow(int Id, string Category, string Name, decimal Price, bool Enabled);
+    private void Edit(ProductRow row)
+    {
+        _isEditMode = true;
+        _editingId = row.Id;
+        _form = new ProductFormModel
+        {
+            CategoryId = row.CategoryId,
+            Name = row.Name,
+            BasePrice = row.Price,
+            SizeOptions = row.SizeOptions,
+            IsTea = row.IsTea,
+            IsEnabled = row.Enabled
+        };
+        _status = $"正在編輯：{row.Name}";
+    }
+
+    private void ResetForm()
+    {
+        _isEditMode = false;
+        _editingId = null;
+        _form = new ProductFormModel
+        {
+            CategoryId = _categories.FirstOrDefault()?.Id ?? 0,
+            SizeOptions = "M,L",
+            IsTea = true,
+            IsEnabled = true
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name) || _form.CategoryId == 0)
+        {
+            _status = "請先填寫商品名稱與分類。";
+            return;
+        }
+
+        if (_isEditMode && _editingId.HasValue)
+        {
+            var entity = await Db.Products.FirstAsync(x => x.Id == _editingId.Value);
+            entity.CategoryId = _form.CategoryId;
+            entity.Name = _form.Name.Trim();
+            entity.BasePrice = _form.BasePrice;
+            entity.SizeOptions = _form.SizeOptions.Trim();
+            entity.IsTea = _form.IsTea;
+            entity.IsEnabled = _form.IsEnabled;
+            _status = $"已更新商品：{entity.Name}";
+        }
+        else
+        {
+            var entity = new ProductEntity
+            {
+                CategoryId = _form.CategoryId,
+                Name = _form.Name.Trim(),
+                BasePrice = _form.BasePrice,
+                SizeOptions = _form.SizeOptions.Trim(),
+                IsTea = _form.IsTea,
+                IsEnabled = _form.IsEnabled
+            };
+            Db.Products.Add(entity);
+            _status = $"已新增商品：{entity.Name}";
+        }
+
+        await Db.SaveChangesAsync();
+        await LoadProductsAsync();
+        ResetForm();
+    }
+
+    private sealed record ProductRow(int Id, string Category, int CategoryId, string Name, decimal Price, string SizeOptions, bool IsTea, bool Enabled);
+    private sealed record CategoryOption(int Id, string Name);
+
+    private sealed class ProductFormModel
+    {
+        public int CategoryId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public decimal BasePrice { get; set; }
+        public string SizeOptions { get; set; } = "M,L";
+        public bool IsTea { get; set; } = true;
+        public bool IsEnabled { get; set; } = true;
+    }
 }
 
 <div class="admin-page">
@@ -51,24 +154,66 @@
         <div class="admin-status">@_status</div>
     </div>
 
-    <div class="admin-card">
-        <div class="admin-table-header">
-            <strong>分類</strong>
-            <strong>商品</strong>
-            <strong>售價</strong>
-            <strong>狀態</strong>
+    <div class="admin-layout-grid">
+        <div class="admin-card form-card">
+            <div class="section-header compact">
+                <h2>@(_isEditMode ? "編輯商品" : "新增商品")</h2>
+                @if (_isEditMode)
+                {
+                    <button class="ghost-action" @onclick="ResetForm">取消編輯</button>
+                }
+            </div>
+
+            <label>分類</label>
+            <select class="admin-input" @bind="_form.CategoryId">
+                @foreach (var category in _categories)
+                {
+                    <option value="@category.Id">@category.Name</option>
+                }
+            </select>
+
+            <label>商品名稱</label>
+            <input class="admin-input" @bind="_form.Name" />
+
+            <label>售價</label>
+            <input class="admin-input" type="number" step="1" @bind="_form.BasePrice" />
+
+            <label>尺寸選項</label>
+            <input class="admin-input" @bind="_form.SizeOptions" placeholder="例如 M,L" />
+
+            <div class="admin-check-row">
+                <label><input type="checkbox" @bind="_form.IsTea" /> 茶飲</label>
+                <label><input type="checkbox" @bind="_form.IsEnabled" /> 上架中</label>
+            </div>
+
+            <button class="primary-action" @onclick="SaveAsync">@(_isEditMode ? "儲存修改" : "新增商品")</button>
         </div>
 
-        @foreach (var row in _products)
-        {
-            <div class="admin-table-row">
-                <span>@row.Category</span>
-                <strong>@row.Name</strong>
-                <span>@row.Price.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</span>
-                <button class="mini-action @(row.Enabled ? "enabled" : "disabled")" @onclick="() => ToggleAsync(row)">
-                    @(row.Enabled ? "上架中" : "已下架")
-                </button>
+        <div class="admin-card">
+            <div class="admin-table-header">
+                <strong>分類</strong>
+                <strong>商品</strong>
+                <strong>售價</strong>
+                <strong>動作</strong>
             </div>
-        }
+
+            @foreach (var row in _products)
+            {
+                <div class="admin-table-row">
+                    <span>@row.Category</span>
+                    <div>
+                        <strong>@row.Name</strong>
+                        <div class="meta">@row.SizeOptions / @(row.IsTea ? "茶飲" : "奶系")</div>
+                    </div>
+                    <span>@row.Price.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</span>
+                    <div class="admin-action-row">
+                        <button class="ghost-action" @onclick="() => Edit(row)">編輯</button>
+                        <button class="mini-action @(row.Enabled ? "enabled" : "disabled")" @onclick="() => ToggleAsync(row)">
+                            @(row.Enabled ? "上架中" : "已下架")
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
     </div>
 </div>
