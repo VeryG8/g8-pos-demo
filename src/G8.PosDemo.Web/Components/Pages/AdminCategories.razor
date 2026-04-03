@@ -10,19 +10,14 @@
     private readonly List<ProductCategoryEntity> _categories = [];
     private string _status = "讀取分類中...";
     private string _newCategoryName = string.Empty;
+    private string _editName = string.Empty;
+    private int? _editingId;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
-        var categories = await Db.ProductCategories
-            .AsNoTracking()
-            .OrderBy(x => x.SortOrder)
-            .ToListAsync();
-
+        var categories = await Db.ProductCategories.AsNoTracking().OrderBy(x => x.SortOrder).ToListAsync();
         _categories.Clear();
         _categories.AddRange(categories);
         _status = $"已載入 {_categories.Count} 個分類。";
@@ -37,16 +32,43 @@
         }
 
         var nextSort = _categories.Count == 0 ? 1 : _categories.Max(x => x.SortOrder) + 1;
-        Db.ProductCategories.Add(new ProductCategoryEntity
-        {
-            Name = _newCategoryName.Trim(),
-            SortOrder = nextSort
-        });
-
+        Db.ProductCategories.Add(new ProductCategoryEntity { Name = _newCategoryName.Trim(), SortOrder = nextSort });
         await Db.SaveChangesAsync();
         _newCategoryName = string.Empty;
         await LoadAsync();
         _status = "已新增分類。";
+    }
+
+    private void BeginEdit(ProductCategoryEntity category)
+    {
+        _editingId = category.Id;
+        _editName = category.Name;
+        _status = $"正在編輯分類：{category.Name}";
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!_editingId.HasValue || string.IsNullOrWhiteSpace(_editName)) return;
+        var entity = await Db.ProductCategories.FirstAsync(x => x.Id == _editingId.Value);
+        entity.Name = _editName.Trim();
+        await Db.SaveChangesAsync();
+        _editingId = null;
+        _editName = string.Empty;
+        await LoadAsync();
+        _status = "已更新分類名稱。";
+    }
+
+    private async Task MoveAsync(ProductCategoryEntity category, int direction)
+    {
+        var ordered = await Db.ProductCategories.OrderBy(x => x.SortOrder).ToListAsync();
+        var index = ordered.FindIndex(x => x.Id == category.Id);
+        var targetIndex = index + direction;
+        if (index < 0 || targetIndex < 0 || targetIndex >= ordered.Count) return;
+
+        (ordered[index].SortOrder, ordered[targetIndex].SortOrder) = (ordered[targetIndex].SortOrder, ordered[index].SortOrder);
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _status = "已更新分類排序。";
     }
 }
 
@@ -61,15 +83,24 @@
 
     <div class="admin-layout-grid">
         <div class="admin-card form-card">
-            <h2>新增分類</h2>
-            <input class="admin-input" @bind="_newCategoryName" placeholder="例如：季節限定" />
-            <button class="primary-action" @onclick="AddAsync">新增分類</button>
+            <h2>@(_editingId.HasValue ? "編輯分類" : "新增分類")</h2>
+            @if (_editingId.HasValue)
+            {
+                <input class="admin-input" @bind="_editName" />
+                <button class="primary-action" @onclick="SaveEditAsync">儲存分類</button>
+            }
+            else
+            {
+                <input class="admin-input" @bind="_newCategoryName" placeholder="例如：季節限定" />
+                <button class="primary-action" @onclick="AddAsync">新增分類</button>
+            }
         </div>
 
         <div class="admin-card">
             <div class="admin-table-header">
                 <strong>排序</strong>
                 <strong>名稱</strong>
+                <strong>動作</strong>
             </div>
 
             @foreach (var category in _categories)
@@ -77,6 +108,11 @@
                 <div class="admin-table-row">
                     <span>@category.SortOrder</span>
                     <strong>@category.Name</strong>
+                    <div class="admin-action-row">
+                        <button class="ghost-action" @onclick="() => BeginEdit(category)">改名</button>
+                        <button class="ghost-action" @onclick="() => MoveAsync(category, -1)">↑</button>
+                        <button class="ghost-action" @onclick="() => MoveAsync(category, 1)">↓</button>
+                    </div>
                 </div>
             }
         </div>
