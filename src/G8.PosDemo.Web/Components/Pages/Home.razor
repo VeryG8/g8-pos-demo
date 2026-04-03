@@ -30,6 +30,7 @@
     private string _searchText = string.Empty;
     private int _nextOrderNumber = 1001;
     private string _currentOrderCode = "A1001";
+    private int? _editingDraftOrderId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -177,6 +178,35 @@
         _status = $"已暫存訂單：{_currentOrderCode}";
     }
 
+    private async Task ResumeDraftAsync(CompletedOrder order)
+    {
+        var entity = await Db.Orders
+            .Include(x => x.Items)
+            .FirstAsync(x => x.Id == order.Id);
+
+        _cart.Clear();
+        foreach (var item in entity.Items)
+        {
+            _cart.Add(new OrderLine(
+                item.ProductName,
+                item.Size,
+                item.Sugar,
+                item.Ice,
+                (item.Toppings ?? "無加料") == "無加料"
+                    ? []
+                    : item.Toppings!.Split('、', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
+                item.UnitPrice,
+                item.Quantity,
+                item.Note ?? string.Empty));
+        }
+
+        _currentOrderCode = entity.OrderCode;
+        _selectedPayment = entity.PaymentMethod;
+        _customerPhone = entity.CustomerPhone ?? string.Empty;
+        _editingDraftOrderId = entity.Id;
+        _status = $"已載回暫存訂單：{entity.OrderCode}";
+    }
+
     private async Task CheckoutAsync()
     {
         if (_cart.Count == 0)
@@ -202,16 +232,33 @@
             }
         }
 
-        var order = new OrderEntity
+        OrderEntity order;
+        if (_editingDraftOrderId.HasValue)
         {
-            OrderCode = _currentOrderCode,
-            PaymentMethod = _selectedPayment,
-            CustomerPhone = _customerPhone,
-            TotalAmount = TotalAmount,
-            CreatedAt = DateTime.UtcNow,
-            OrderSummary = summary,
-            Status = status
-        };
+            order = await Db.Orders.Include(x => x.Items).FirstAsync(x => x.Id == _editingDraftOrderId.Value);
+            order.PaymentMethod = _selectedPayment;
+            order.CustomerPhone = _customerPhone;
+            order.TotalAmount = TotalAmount;
+            order.OrderSummary = summary;
+            order.Status = status;
+            order.CreatedAt = DateTime.UtcNow;
+            Db.OrderItems.RemoveRange(order.Items);
+            order.Items.Clear();
+        }
+        else
+        {
+            order = new OrderEntity
+            {
+                OrderCode = _currentOrderCode,
+                PaymentMethod = _selectedPayment,
+                CustomerPhone = _customerPhone,
+                TotalAmount = TotalAmount,
+                CreatedAt = DateTime.UtcNow,
+                OrderSummary = summary,
+                Status = status
+            };
+            Db.Orders.Add(order);
+        }
 
         foreach (var line in _cart)
         {
@@ -228,9 +275,9 @@
             });
         }
 
-        Db.Orders.Add(order);
         await Db.SaveChangesAsync();
 
+        _editingDraftOrderId = null;
         _cart.Clear();
         _customerPhone = string.Empty;
         _note = string.Empty;
@@ -395,6 +442,10 @@
                                 </div>
                                 <div class="admin-action-row">
                                     <strong>@order.Amount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+                                    @if (order.Status == "Draft")
+                                    {
+                                        <button class="ghost-action" @onclick="() => ResumeDraftAsync(order)">續編</button>
+                                    }
                                     @if (order.Status != "Voided")
                                     {
                                         <button class="ghost-action" @onclick="() => VoidOrderAsync(order)">作廢</button>
@@ -411,7 +462,7 @@
             <div class="cart-header">
                 <div>
                     <h2>當前訂單</h2>
-                    <div class="meta">外帶專用櫃台</div>
+                    <div class="meta">@(_editingDraftOrderId.HasValue ? "正在續編暫存單" : "外帶專用櫃台")</div>
                 </div>
                 <button class="ghost-action" @onclick="ClearCart">清空</button>
             </div>
@@ -461,8 +512,8 @@
                     <div class="total-row"><span>付款方式</span><strong>@_selectedPayment</strong></div>
                     <div class="total-row emphasis"><span>應收金額</span><strong>@TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                 </div>
-                <button class="secondary-action" @onclick="SaveDraftAsync">暫存訂單</button>
-                <button class="checkout-action" @onclick="CheckoutAsync">完成結帳</button>
+                <button class="secondary-action" @onclick="SaveDraftAsync">@(_editingDraftOrderId.HasValue ? "更新暫存單" : "暫存訂單")</button>
+                <button class="checkout-action" @onclick="CheckoutAsync">@(_editingDraftOrderId.HasValue ? "完成續編結帳" : "完成結帳")</button>
             </div>
         </section>
     </div>
