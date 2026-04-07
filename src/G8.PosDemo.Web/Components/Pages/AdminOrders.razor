@@ -10,6 +10,9 @@
     private readonly List<OrderRow> _orders = [];
     private string _filter = "All";
     private string _status = "讀取訂單中...";
+    private DateTime _fromDate = DateTime.Today;
+    private DateTime _toDate = DateTime.Today;
+    private OrderDetailViewModel? _selectedOrder;
 
     protected override async Task OnInitializedAsync()
     {
@@ -18,8 +21,12 @@
 
     private async Task LoadAsync()
     {
+        var fromUtc = _fromDate.Date;
+        var toUtc = _toDate.Date.AddDays(1);
+
         var query = Db.Orders
             .AsNoTracking()
+            .Where(x => x.CreatedAt >= fromUtc && x.CreatedAt < toUtc)
             .OrderByDescending(x => x.CreatedAt)
             .AsQueryable();
 
@@ -29,7 +36,7 @@
         }
 
         var rows = await query
-            .Select(x => new OrderRow(x.OrderCode, x.CreatedAt, x.PaymentMethod, x.OrderSummary ?? string.Empty, x.TotalAmount, x.Status))
+            .Select(x => new OrderRow(x.Id, x.OrderCode, x.CreatedAt, x.PaymentMethod, x.OrderSummary ?? string.Empty, x.TotalAmount, x.Status))
             .ToListAsync();
 
         _orders.Clear();
@@ -43,7 +50,34 @@
         await LoadAsync();
     }
 
-    private sealed record OrderRow(string OrderCode, DateTime CreatedAt, string Payment, string Summary, decimal Amount, string Status);
+    private async Task ShowDetailAsync(OrderRow row)
+    {
+        var order = await Db.Orders
+            .AsNoTracking()
+            .Include(x => x.Items)
+            .FirstAsync(x => x.Id == row.Id);
+
+        _selectedOrder = new OrderDetailViewModel(
+            order.OrderCode,
+            order.CreatedAt.ToLocalTime(),
+            order.PaymentMethod,
+            order.Status,
+            order.TotalAmount,
+            order.CustomerPhone,
+            order.Items.Select(x => new OrderItemDetailViewModel(
+                x.ProductName,
+                x.Size,
+                x.Sugar,
+                x.Ice,
+                x.Toppings ?? "無加料",
+                x.Note,
+                x.Quantity,
+                x.UnitPrice)).ToList());
+    }
+
+    private sealed record OrderRow(int Id, string OrderCode, DateTime CreatedAt, string Payment, string Summary, decimal Amount, string Status);
+    private sealed record OrderDetailViewModel(string OrderCode, DateTime CreatedAt, string Payment, string Status, decimal Amount, string? CustomerPhone, List<OrderItemDetailViewModel> Items);
+    private sealed record OrderItemDetailViewModel(string ProductName, string Size, string Sugar, string Ice, string Toppings, string? Note, int Quantity, decimal UnitPrice);
 }
 
 <div class="admin-page">
@@ -55,35 +89,91 @@
         <div class="admin-status">@_status</div>
     </div>
 
-    <div class="admin-card form-card">
-        <div class="payment-row">
-            <button class="option-chip compact @(_filter == "All" ? "active" : null)" @onclick='() => SetFilterAsync("All")'>全部</button>
-            <button class="option-chip compact @(_filter == "Draft" ? "active" : null)" @onclick='() => SetFilterAsync("Draft")'>暫存</button>
-            <button class="option-chip compact @(_filter == "Completed" ? "active" : null)" @onclick='() => SetFilterAsync("Completed")'>完成</button>
-            <button class="option-chip compact @(_filter == "Voided" ? "active" : null)" @onclick='() => SetFilterAsync("Voided")'>作廢</button>
-        </div>
-    </div>
-
-    <div class="admin-card">
-        <div class="admin-table-header">
-            <strong>訂單號</strong>
-            <strong>時間</strong>
-            <strong>付款</strong>
-            <strong>內容</strong>
-            <strong>狀態</strong>
-            <strong>金額</strong>
-        </div>
-
-        @foreach (var order in _orders)
-        {
-            <div class="admin-table-row">
-                <strong>@order.OrderCode</strong>
-                <span>@order.CreatedAt.ToLocalTime():MM/dd HH:mm</span>
-                <span>@order.Payment</span>
-                <span>@order.Summary</span>
-                <span>@order.Status</span>
-                <strong>@order.Amount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+    <div class="admin-layout-grid">
+        <div class="admin-card form-card">
+            <div class="payment-row">
+                <button class="option-chip compact @(_filter == "All" ? "active" : null)" @onclick='() => SetFilterAsync("All")'>全部</button>
+                <button class="option-chip compact @(_filter == "Draft" ? "active" : null)" @onclick='() => SetFilterAsync("Draft")'>暫存</button>
+                <button class="option-chip compact @(_filter == "Completed" ? "active" : null)" @onclick='() => SetFilterAsync("Completed")'>完成</button>
+                <button class="option-chip compact @(_filter == "Voided" ? "active" : null)" @onclick='() => SetFilterAsync("Voided")'>作廢</button>
             </div>
-        }
+
+            <label>開始日期</label>
+            <input class="admin-input" type="date" @bind="_fromDate" />
+
+            <label>結束日期</label>
+            <input class="admin-input" type="date" @bind="_toDate" />
+
+            <button class="primary-action" @onclick="LoadAsync">套用日期篩選</button>
+        </div>
+
+        <div class="admin-card">
+            <div class="admin-table-header">
+                <strong>訂單號</strong>
+                <strong>時間</strong>
+                <strong>付款</strong>
+                <strong>內容</strong>
+                <strong>狀態</strong>
+                <strong>金額</strong>
+                <strong>動作</strong>
+            </div>
+
+            @foreach (var order in _orders)
+            {
+                <div class="admin-table-row">
+                    <strong>@order.OrderCode</strong>
+                    <span>@order.CreatedAt.ToLocalTime():MM/dd HH:mm</span>
+                    <span>@order.Payment</span>
+                    <span>@order.Summary</span>
+                    <span>@order.Status</span>
+                    <strong>@order.Amount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+                    <button class="ghost-action" @onclick="() => ShowDetailAsync(order)">明細</button>
+                </div>
+            }
+        </div>
     </div>
+
+    @if (_selectedOrder is not null)
+    {
+        <div class="admin-card detail-card">
+            <div class="section-header compact">
+                <h2>訂單明細：@_selectedOrder.OrderCode</h2>
+            </div>
+
+            <div class="report-grid">
+                <div class="report-panel">
+                    <span>時間</span>
+                    <strong>@_selectedOrder.CreatedAt:yyyy/MM/dd HH:mm</strong>
+                </div>
+                <div class="report-panel">
+                    <span>付款方式</span>
+                    <strong>@_selectedOrder.Payment</strong>
+                </div>
+                <div class="report-panel">
+                    <span>狀態 / 總額</span>
+                    <strong>@_selectedOrder.Status / @_selectedOrder.Amount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+                    <small>會員：@(_selectedOrder.CustomerPhone ?? "未填")</small>
+                </div>
+            </div>
+
+            <div class="admin-table-header">
+                <strong>商品</strong>
+                <strong>規格</strong>
+                <strong>備註</strong>
+                <strong>數量</strong>
+                <strong>單價</strong>
+            </div>
+
+            @foreach (var item in _selectedOrder.Items)
+            {
+                <div class="admin-table-row">
+                    <strong>@item.ProductName</strong>
+                    <span>@item.Size / @item.Sugar / @item.Ice / @item.Toppings</span>
+                    <span>@(string.IsNullOrWhiteSpace(item.Note) ? "-" : item.Note)</span>
+                    <span>@item.Quantity</span>
+                    <strong>@item.UnitPrice.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+                </div>
+            }
+        </div>
+    }
 </div>
