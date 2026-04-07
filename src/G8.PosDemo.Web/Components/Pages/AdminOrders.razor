@@ -112,6 +112,7 @@
                 <strong>訂單號</strong>
                 <strong>時間</strong>
                 <strong>付款</strong>
+                <strong>狀態</strong>
                 <strong>金額</strong>
                 <strong>動作</strong>
             </div>
@@ -122,6 +123,7 @@
                     <strong>@order.OrderCode</strong>
                     <span>@order.CreatedAt:MM/dd HH:mm</span>
                     <span>@order.Payment</span>
+                    <span>@order.Status</span>
                     <strong>@order.Amount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
                     <button class="ghost-action" @onclick="() => ShowDetailAsync(order)">明細</button>
                 </div>
