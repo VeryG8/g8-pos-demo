@@ -1,29 +1,39 @@
 @inherits LayoutComponentBase
 
 @code {
-    private bool _sidebarOpen;
+    private bool _sidebarExpanded = false;
 
-    private string SidebarClass => _sidebarOpen ? "page-shell sidebar-open" : "page-shell sidebar-collapsed";
+    private string SidebarStateClass => _sidebarExpanded ? "sidebar-expanded" : "sidebar-collapsed";
 
     private void ToggleSidebar()
     {
-        _sidebarOpen = !_sidebarOpen;
+        _sidebarExpanded = !_sidebarExpanded;
     }
 }
 
-<div class="@SidebarClass">
-    <aside class="sidebar-shell">
-        <NavMenu />
-    </aside>
-
-    <main class="main-shell">
-        <div class="layout-topbar">
-            <button class="sidebar-toggle" type="button" @onclick="ToggleSidebar">☰ 功能選單</button>
+<div class="layout-shell @SidebarStateClass">
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <button class="sidebar-toggle-btn" type="button" @onclick="ToggleSidebar">
+                <span class="toggle-icon">☰</span>
+                @if (_sidebarExpanded)
+                {
+                    <span>收合選單</span>
+                }
+                else
+                {
+                    <span>展開</span>
+                }
+            </button>
         </div>
 
-        <article class="content-shell">
-            @Body
-        </article>
+        <div class="sidebar-body">
+            <NavMenu Expanded="_sidebarExpanded" />
+        </div>
+    </aside>
+
+    <main class="layout-content">
+        @Body
     </main>
 </div>
 
