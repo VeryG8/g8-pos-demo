@@ -432,12 +432,8 @@
                     <label>備註</label>
                     <input class="search-box full-input" @bind="_note" placeholder="例如：少冰去糖、先做" />
 
-                    <div class="action-grid two-row-grid">
+                    <div class="action-grid single-action-grid">
                         <button class="primary-action large-action" @onclick="AddSelectedToCart">加入訂單</button>
-                        <button class="secondary-action" @onclick="PrintKitchenTicket">印廚房單</button>
-                        <button class="secondary-action" @onclick="PrintSticker">印杯貼</button>
-                        <button class="secondary-action" @onclick="PrintReceipt">印收據</button>
-                        <button class="secondary-action" @onclick="OpenCashDrawer">開錢櫃</button>
                     </div>
                 }
             </div>

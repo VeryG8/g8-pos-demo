@@ -36,7 +36,7 @@
         }
 
         var rows = await query
-            .Select(x => new OrderRow(x.Id, x.OrderCode, x.CreatedAt, x.PaymentMethod, x.OrderSummary ?? string.Empty, x.TotalAmount, x.Status))
+            .Select(x => new OrderRow(x.Id, x.OrderCode, x.CreatedAt.ToLocalTime(), x.PaymentMethod, x.OrderSummary ?? string.Empty, x.TotalAmount, x.Status))
             .ToListAsync();
 
         _orders.Clear();
@@ -112,8 +112,6 @@
                 <strong>訂單號</strong>
                 <strong>時間</strong>
                 <strong>付款</strong>
-                <strong>內容</strong>
-                <strong>狀態</strong>
                 <strong>金額</strong>
                 <strong>動作</strong>
             </div>
@@ -122,10 +120,8 @@
             {
                 <div class="admin-table-row">
                     <strong>@order.OrderCode</strong>
-                    <span>@order.CreatedAt.ToLocalTime():MM/dd HH:mm</span>
+                    <span>@order.CreatedAt:MM/dd HH:mm</span>
                     <span>@order.Payment</span>
-                    <span>@order.Summary</span>
-                    <span>@order.Status</span>
                     <strong>@order.Amount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
                     <button class="ghost-action" @onclick="() => ShowDetailAsync(order)">明細</button>
                 </div>

@@ -180,6 +180,7 @@ button, select, input { font: inherit; }
 .topping-list { display: grid; gap: 4px; }
 .action-grid { display: grid; gap: 6px; }
 .two-row-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.single-action-grid { grid-template-columns: 1fr; }
 
 .primary-action, .secondary-action, .checkout-action {
     width: 100%;
