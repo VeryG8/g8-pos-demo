@@ -1,18 +1,19 @@
-<details class="nav-drawer">
-    <summary class="nav-drawer-summary">
-        <span>☰ 展開功能選單</span>
-    </summary>
-
+<div class="nav-drawer nav-drawer-open">
     <div class="brand-block">
         <a class="brand-link" href="">G8 POS Demo</a>
         <span class="brand-subtitle">前台 / 後台</span>
     </div>
 
     <nav class="nav-menu">
+        <div class="nav-group-label">櫃台</div>
         <NavLink class="nav-item-link nav-front" href="" Match="NavLinkMatch.All">前台點餐</NavLink>
+
+        <div class="nav-group-label">訂單</div>
         <NavLink class="nav-item-link nav-orders" href="admin/orders">訂單管理</NavLink>
+
+        <div class="nav-group-label">後台設定</div>
         <NavLink class="nav-item-link nav-products" href="admin/products">後台商品</NavLink>
         <NavLink class="nav-item-link nav-categories" href="admin/categories">後台分類</NavLink>
         <NavLink class="nav-item-link nav-reports" href="admin/reports">後台報表</NavLink>
     </nav>
-</details>
+</div>
