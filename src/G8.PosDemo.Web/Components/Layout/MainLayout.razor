@@ -1,11 +1,26 @@
 @inherits LayoutComponentBase
 
-<div class="page-shell sidebar-open">
+@code {
+    private bool _sidebarOpen;
+
+    private string SidebarClass => _sidebarOpen ? "page-shell sidebar-open" : "page-shell sidebar-collapsed";
+
+    private void ToggleSidebar()
+    {
+        _sidebarOpen = !_sidebarOpen;
+    }
+}
+
+<div class="@SidebarClass">
     <aside class="sidebar-shell">
         <NavMenu />
     </aside>
 
     <main class="main-shell">
+        <div class="layout-topbar">
+            <button class="sidebar-toggle" type="button" @onclick="ToggleSidebar">☰ 功能選單</button>
+        </div>
+
         <article class="content-shell">
             @Body
         </article>

@@ -86,7 +86,7 @@ button, select, input { font: inherit; }
 
 .orders-page-grid {
     display: grid;
-    grid-template-columns: 260px minmax(0, 1.1fr) minmax(0, 0.9fr);
+    grid-template-columns: 240px minmax(0, 1.2fr) minmax(320px, 0.9fr);
     gap: 14px;
     align-items: start;
 }
@@ -210,7 +210,7 @@ button, select, input { font: inherit; }
 .order-grid-header,
 .clickable-order-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 0.8fr 0.8fr 0.8fr;
+    grid-template-columns: minmax(80px, 0.9fr) minmax(110px, 1fr) minmax(70px, 0.8fr) minmax(70px, 0.75fr) minmax(70px, 0.75fr);
     gap: 10px;
     align-items: center;
 }
@@ -239,6 +239,12 @@ button, select, input { font: inherit; }
 .order-list-card,
 .right-detail-card {
     min-height: 560px;
+}
+
+.right-detail-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
 .order-list-scroll {
@@ -388,7 +394,12 @@ button, select, input { font: inherit; }
 
 @media (max-width: 1400px) {
     .orders-page-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 240px minmax(0, 1fr);
+    }
+
+    .right-detail-card {
+        grid-column: 1 / -1;
+        min-height: 0;
     }
 }
 
@@ -400,15 +411,21 @@ button, select, input { font: inherit; }
     .search-box { width: 100%; }
 }
 
-@media (max-width: 720px) {
-    .section-header, .selected-product, .cart-line, .recent-order-item, .admin-header {
-        flex-direction: column;
-        align-items: stretch;
+@media (max-width: 1024px) {
+    .orders-page-grid {
+        grid-template-columns: 1fr;
     }
 
     .order-grid-header,
     .clickable-order-grid,
     .detail-item-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .section-header, .selected-product, .cart-line, .recent-order-item, .admin-header {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
