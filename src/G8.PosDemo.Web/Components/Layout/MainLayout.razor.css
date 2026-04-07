@@ -1,12 +1,12 @@
 .page-shell {
     display: grid;
-    grid-template-columns: 64px 1fr;
+    grid-template-columns: 72px 1fr;
     min-height: 100vh;
     background: #eef2f7;
 }
 
 .page-shell:not(.sidebar-collapsed) {
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 240px 1fr;
 }
 
 .sidebar-shell {
@@ -24,17 +24,19 @@
 :global(.nav-drawer) {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 :global(.nav-drawer-summary) {
     list-style: none;
     cursor: pointer;
-    background: rgba(255,255,255,0.08);
-    border-radius: 12px;
-    padding: 10px 12px;
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+    border-radius: 14px;
+    padding: 12px 12px;
     color: white;
-    font-weight: 700;
+    font-weight: 800;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
 }
 
 :global(.nav-drawer-summary::-webkit-details-marker) {
@@ -61,26 +63,28 @@
 
 :global(.nav-menu) {
     display: grid;
-    gap: 8px;
+    gap: 10px;
 }
 
 :global(.nav-item-link) {
-    color: rgba(255,255,255,0.92);
+    color: white;
     text-decoration: none;
-    padding: 10px 12px;
-    border-radius: 12px;
-    font-weight: 600;
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-weight: 700;
+    box-shadow: 0 8px 18px rgba(15,23,42,0.18);
+    border: 1px solid rgba(255,255,255,0.08);
 }
 
-:global(.nav-front) { background: rgba(14, 165, 233, 0.22); border-left: 4px solid #38bdf8; }
-:global(.nav-orders) { background: rgba(249, 115, 22, 0.22); border-left: 4px solid #fb923c; }
-:global(.nav-products) { background: rgba(34, 197, 94, 0.22); border-left: 4px solid #4ade80; }
-:global(.nav-categories) { background: rgba(168, 85, 247, 0.22); border-left: 4px solid #c084fc; }
-:global(.nav-reports) { background: rgba(244, 63, 94, 0.22); border-left: 4px solid #fb7185; }
+:global(.nav-front) { background: linear-gradient(135deg, #0ea5e9, #38bdf8); }
+:global(.nav-orders) { background: linear-gradient(135deg, #f97316, #fb923c); }
+:global(.nav-products) { background: linear-gradient(135deg, #22c55e, #4ade80); }
+:global(.nav-categories) { background: linear-gradient(135deg, #a855f7, #c084fc); }
+:global(.nav-reports) { background: linear-gradient(135deg, #f43f5e, #fb7185); }
 
 :global(.nav-item-link.active) {
-    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.25);
-    color: white;
+    box-shadow: inset 0 0 0 3px rgba(255,255,255,0.35), 0 10px 24px rgba(15,23,42,0.2);
+    transform: translateY(-1px);
 }
 
 @media (max-width: 1000px) {
