@@ -1,0 +1,89 @@
+@page "/admin/orders"
+@using System.Globalization
+@using G8.PosDemo.Web.Data
+@using Microsoft.EntityFrameworkCore
+@inject PosDbContext Db
+
+<PageTitle>訂單管理</PageTitle>
+
+@code {
+    private readonly List<OrderRow> _orders = [];
+    private string _filter = "All";
+    private string _status = "讀取訂單中...";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var query = Db.Orders
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
+            .AsQueryable();
+
+        if (_filter != "All")
+        {
+            query = query.Where(x => x.Status == _filter);
+        }
+
+        var rows = await query
+            .Select(x => new OrderRow(x.OrderCode, x.CreatedAt, x.PaymentMethod, x.OrderSummary ?? string.Empty, x.TotalAmount, x.Status))
+            .ToListAsync();
+
+        _orders.Clear();
+        _orders.AddRange(rows);
+        _status = $"已載入 {_orders.Count} 筆訂單。";
+    }
+
+    private async Task SetFilterAsync(string filter)
+    {
+        _filter = filter;
+        await LoadAsync();
+    }
+
+    private sealed record OrderRow(string OrderCode, DateTime CreatedAt, string Payment, string Summary, decimal Amount, string Status);
+}
+
+<div class="admin-page">
+    <div class="admin-header">
+        <div>
+            <div class="eyebrow">Admin / Orders</div>
+            <h1>訂單管理</h1>
+        </div>
+        <div class="admin-status">@_status</div>
+    </div>
+
+    <div class="admin-card form-card">
+        <div class="payment-row">
+            <button class="option-chip compact @(_filter == "All" ? "active" : null)" @onclick='() => SetFilterAsync("All")'>全部</button>
+            <button class="option-chip compact @(_filter == "Draft" ? "active" : null)" @onclick='() => SetFilterAsync("Draft")'>暫存</button>
+            <button class="option-chip compact @(_filter == "Completed" ? "active" : null)" @onclick='() => SetFilterAsync("Completed")'>完成</button>
+            <button class="option-chip compact @(_filter == "Voided" ? "active" : null)" @onclick='() => SetFilterAsync("Voided")'>作廢</button>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-table-header">
+            <strong>訂單號</strong>
+            <strong>時間</strong>
+            <strong>付款</strong>
+            <strong>內容</strong>
+            <strong>狀態</strong>
+            <strong>金額</strong>
+        </div>
+
+        @foreach (var order in _orders)
+        {
+            <div class="admin-table-row">
+                <strong>@order.OrderCode</strong>
+                <span>@order.CreatedAt.ToLocalTime():MM/dd HH:mm</span>
+                <span>@order.Payment</span>
+                <span>@order.Summary</span>
+                <span>@order.Status</span>
+                <strong>@order.Amount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+            </div>
+        }
+    </div>
+</div>
