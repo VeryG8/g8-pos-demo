@@ -28,6 +28,7 @@
     private string _note = string.Empty;
     private decimal _discountAmount;
     private decimal _receivedAmount;
+    private bool _showCheckoutConfirm;
     private string _status = "待點餐";
     private string _searchText = string.Empty;
     private int _nextOrderNumber = 1001;
@@ -209,7 +210,7 @@
         _status = $"已載回暫存訂單：{entity.OrderCode}";
     }
 
-    private async Task CheckoutAsync()
+    private void CheckoutAsync()
     {
         if (_cart.Count == 0)
         {
@@ -217,8 +218,20 @@
             return;
         }
 
+        _showCheckoutConfirm = true;
+    }
+
+    private async Task ConfirmCheckoutAsync()
+    {
         await PersistOrderAsync("Completed");
+        _showCheckoutConfirm = false;
         _status = $"結帳完成：{_currentOrderCode} / {_selectedPayment} / {TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}";
+    }
+
+    private void CancelCheckout()
+    {
+        _showCheckoutConfirm = false;
+        _status = "已取消結帳確認。";
     }
 
     private async Task PersistOrderAsync(string status)
@@ -420,7 +433,7 @@
                     <input class="search-box full-input" @bind="_note" placeholder="例如：少冰去糖、先做" />
 
                     <div class="action-grid two-row-grid">
-                        <button class="primary-action" @onclick="AddSelectedToCart">加入訂單</button>
+                        <button class="primary-action large-action" @onclick="AddSelectedToCart">加入訂單</button>
                         <button class="secondary-action" @onclick="PrintKitchenTicket">印廚房單</button>
                         <button class="secondary-action" @onclick="PrintSticker">印杯貼</button>
                         <button class="secondary-action" @onclick="PrintReceipt">印收據</button>
@@ -531,4 +544,31 @@
             </div>
         </section>
     </div>
+
+    @if (_showCheckoutConfirm)
+    {
+        <div class="modal-backdrop">
+            <div class="checkout-modal">
+                <div class="section-header compact">
+                    <h2>結帳確認</h2>
+                    <button class="ghost-action" @onclick="CancelCheckout">關閉</button>
+                </div>
+
+                <div class="checkout-summary modal-summary">
+                    <div class="total-row"><span>應收金額</span><strong>@TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
+                    <div class="total-row"><span>實收金額</span><strong>@_receivedAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
+                    <div class="total-row"><span>找零</span><strong>@ChangeAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
+                    <div class="total-row"><span>付款方式</span><strong>@_selectedPayment</strong></div>
+                </div>
+
+                <div class="action-grid modal-action-grid">
+                    <button class="secondary-action" @onclick="PrintKitchenTicket">印廚房單</button>
+                    <button class="secondary-action" @onclick="PrintSticker">印杯貼</button>
+                    <button class="secondary-action" @onclick="PrintReceipt">印收據</button>
+                    <button class="secondary-action" @onclick="OpenCashDrawer">開錢櫃</button>
+                    <button class="checkout-action" @onclick="ConfirmCheckoutAsync">確認完成結帳</button>
+                </div>
+            </div>
+        </div>
+    }
 </div>
