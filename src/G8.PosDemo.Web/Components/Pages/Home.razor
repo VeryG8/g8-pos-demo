@@ -332,10 +332,20 @@
 
         var allCupPrices = _cart
             .SelectMany(x => Enumerable.Repeat(x.UnitPrice, x.Quantity))
-            .OrderBy(x => x)
+            .OrderByDescending(x => x)
             .ToList();
 
-        return allCupPrices.Take(PromotionFreeCupCount).Sum();
+        decimal discount = 0m;
+        for (var groupIndex = 0; groupIndex < PromotionFreeCupCount; groupIndex++)
+        {
+            var freeCupIndex = (groupIndex * 6) + 5;
+            if (freeCupIndex < allCupPrices.Count)
+            {
+                discount += allCupPrices[freeCupIndex];
+            }
+        }
+
+        return discount;
     }
 
     private sealed record ProductCategoryViewModel(int Id, string Name, List<ProductViewModel> Products);

@@ -1,12 +1,8 @@
 @using Microsoft.AspNetCore.Components
 
 <div class="nav-shell @(Expanded ? "expanded" : "collapsed")">
-    <button class="nav-toggle-button" type="button" @onclick="OnToggle">
+    <button class="nav-toggle-button" type="button" @onclick="OnToggle" aria-label="功能選單">
         <span class="nav-emoji">☰</span>
-        @if (Expanded)
-        {
-            <span>功能選單</span>
-        }
     </button>
 
     @if (Expanded)
@@ -22,22 +18,27 @@
         <div class="nav-buttons-grid">
             <NavLink class="nav-button nav-front" href="" Match="NavLinkMatch.All">
                 <span class="nav-emoji">🧋</span>
+                <span>前台點餐</span>
             </NavLink>
 
             <NavLink class="nav-button nav-orders" href="admin/orders">
                 <span class="nav-emoji">📋</span>
+                <span>訂單管理</span>
             </NavLink>
 
             <NavLink class="nav-button nav-products" href="admin/products">
                 <span class="nav-emoji">🥤</span>
+                <span>後台商品</span>
             </NavLink>
 
             <NavLink class="nav-button nav-categories" href="admin/categories">
                 <span class="nav-emoji">🗂️</span>
+                <span>後台分類</span>
             </NavLink>
 
             <NavLink class="nav-button nav-reports" href="admin/reports">
                 <span class="nav-emoji">📈</span>
+                <span>後台報表</span>
             </NavLink>
         </div>
     }
