@@ -31,6 +31,7 @@
     private bool _showCheckoutConfirm;
     private string _status = "待點餐";
     private string _searchText = string.Empty;
+    private string _promotionName = "買五送一";
     private int _nextOrderNumber = 1001;
     private string _currentOrderCode = "A1001";
     private int? _editingDraftOrderId;
@@ -316,9 +317,26 @@
     private void OpenCashDrawer() => _status = "已模擬開啟錢櫃。";
 
     private decimal GrossAmount => _cart.Sum(x => x.Subtotal);
-    private decimal TotalAmount => Math.Max(0, GrossAmount - _discountAmount);
-    private decimal ChangeAmount => Math.Max(0, _receivedAmount - TotalAmount);
     private int TotalQuantity => _cart.Sum(x => x.Quantity);
+    private int PromotionFreeCupCount => TotalQuantity / 6;
+    private decimal PromotionDiscountAmount => CalculatePromotionDiscount();
+    private decimal TotalAmount => Math.Max(0, GrossAmount - PromotionDiscountAmount - _discountAmount);
+    private decimal ChangeAmount => Math.Max(0, _receivedAmount - TotalAmount);
+
+    private decimal CalculatePromotionDiscount()
+    {
+        if (PromotionFreeCupCount <= 0 || _cart.Count == 0)
+        {
+            return 0m;
+        }
+
+        var allCupPrices = _cart
+            .SelectMany(x => Enumerable.Repeat(x.UnitPrice, x.Quantity))
+            .OrderBy(x => x)
+            .ToList();
+
+        return allCupPrices.Take(PromotionFreeCupCount).Sum();
+    }
 
     private sealed record ProductCategoryViewModel(int Id, string Name, List<ProductViewModel> Products);
     private sealed record ProductViewModel(int Id, string Name, decimal Price, List<string> Sizes, bool IsTea);
@@ -355,7 +373,7 @@
     <div class="summary-strip slim-summary">
         <div class="summary-card accent-orange"><span>杯數</span><strong>@TotalQuantity</strong></div>
         <div class="summary-card accent-green"><span>總金額</span><strong>@TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
-        <div class="summary-card accent-blue"><span>付款方式</span><strong>@_selectedPayment</strong></div>
+        <div class="summary-card accent-blue"><span>活動優惠</span><strong>@(PromotionFreeCupCount > 0 ? $"{_promotionName} -{PromotionDiscountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}" : "未達門檻")</strong></div>
     </div>
 
     <div class="pos-grid full-height-grid">
@@ -529,7 +547,8 @@
                 <div class="checkout-summary">
                     <div class="total-row"><span>總杯數</span><strong>@TotalQuantity</strong></div>
                     <div class="total-row"><span>原始金額</span><strong>@GrossAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
-                    <div class="total-row"><span>折扣</span><strong>@_discountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
+                    <div class="total-row"><span>@_promotionName</span><strong>@(PromotionFreeCupCount > 0 ? $"-{PromotionDiscountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}" : "未達門檻")</strong></div>
+                    <div class="total-row"><span>手動折扣</span><strong>@_discountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                     <div class="total-row"><span>付款方式</span><strong>@_selectedPayment</strong></div>
                     <div class="total-row"><span>實收金額</span><strong>@_receivedAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                     <div class="total-row"><span>找零</span><strong>@ChangeAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
@@ -552,6 +571,7 @@
 
                 <div class="checkout-summary modal-summary">
                     <div class="total-row"><span>應收金額</span><strong>@TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
+                    <div class="total-row"><span>@_promotionName</span><strong>@(PromotionFreeCupCount > 0 ? $"已折抵 {PromotionDiscountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}" : "未達門檻")</strong></div>
                     <div class="total-row"><span>實收金額</span><strong>@_receivedAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                     <div class="total-row"><span>找零</span><strong>@ChangeAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                     <div class="total-row"><span>付款方式</span><strong>@_selectedPayment</strong></div>

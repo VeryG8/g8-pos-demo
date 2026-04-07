@@ -102,6 +102,7 @@
     padding: 12px 14px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 12px;
     font-weight: 800;
     box-shadow: 0 10px 22px rgba(15,23,42,0.18);
