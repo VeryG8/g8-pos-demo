@@ -26,6 +26,8 @@
     private string _customerPhone = string.Empty;
     private string _pickupNumber = "001";
     private string _note = string.Empty;
+    private decimal _discountAmount;
+    private decimal _receivedAmount;
     private string _status = "待點餐";
     private string _searchText = string.Empty;
     private int _nextOrderNumber = 1001;
@@ -281,6 +283,8 @@
         _cart.Clear();
         _customerPhone = string.Empty;
         _note = string.Empty;
+        _discountAmount = 0;
+        _receivedAmount = 0;
         await LoadRecentOrdersAsync();
     }
 
@@ -298,7 +302,9 @@
     private void PrintReceipt() => _status = _cart.Count == 0 ? "目前沒有可列印的小白單。" : $"已模擬列印收據：{_currentOrderCode}";
     private void OpenCashDrawer() => _status = "已模擬開啟錢櫃。";
 
-    private decimal TotalAmount => _cart.Sum(x => x.Subtotal);
+    private decimal GrossAmount => _cart.Sum(x => x.Subtotal);
+    private decimal TotalAmount => Math.Max(0, GrossAmount - _discountAmount);
+    private decimal ChangeAmount => Math.Max(0, _receivedAmount - TotalAmount);
     private int TotalQuantity => _cart.Sum(x => x.Quantity);
 
     private sealed record ProductCategoryViewModel(int Id, string Name, List<ProductViewModel> Products);
@@ -475,6 +481,10 @@
                         <button class="option-chip compact @(payment == _selectedPayment ? "active" : null)" @onclick="() => _selectedPayment = payment">@payment</button>
                     }
                 </div>
+                <div class="payment-fields-grid">
+                    <input class="admin-input" type="number" step="1" @bind="_discountAmount" placeholder="折扣金額" />
+                    <input class="admin-input" type="number" step="1" @bind="_receivedAmount" placeholder="實收金額" />
+                </div>
             </div>
 
             @if (_cart.Count == 0)
@@ -509,7 +519,11 @@
             <div class="checkout-box pinned-footer">
                 <div class="checkout-summary">
                     <div class="total-row"><span>總杯數</span><strong>@TotalQuantity</strong></div>
+                    <div class="total-row"><span>原始金額</span><strong>@GrossAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
+                    <div class="total-row"><span>折扣</span><strong>@_discountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                     <div class="total-row"><span>付款方式</span><strong>@_selectedPayment</strong></div>
+                    <div class="total-row"><span>實收金額</span><strong>@_receivedAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
+                    <div class="total-row"><span>找零</span><strong>@ChangeAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                     <div class="total-row emphasis"><span>應收金額</span><strong>@TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                 </div>
                 <button class="secondary-action" @onclick="SaveDraftAsync">@(_editingDraftOrderId.HasValue ? "更新暫存單" : "暫存訂單")</button>

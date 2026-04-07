@@ -200,6 +200,7 @@ button, select, input { font: inherit; }
 
 .ghost-action { background: #e2e8f0; padding: 7px 10px; }
 .customer-block { display: grid; gap: 6px; margin-bottom: 6px; }
+.payment-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
 .cart-list, .recent-orders-list { display: flex; flex-direction: column; gap: 8px; }
 .order-scroll, .compact-scroll {
