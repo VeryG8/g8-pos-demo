@@ -13,23 +13,7 @@
 
 <div class="layout-shell @SidebarStateClass">
     <aside class="app-sidebar">
-        <div class="sidebar-header">
-            <button class="sidebar-toggle-btn" type="button" @onclick="ToggleSidebar">
-                <span class="toggle-icon">☰</span>
-                @if (_sidebarExpanded)
-                {
-                    <span>收合選單</span>
-                }
-                else
-                {
-                    <span>展開</span>
-                }
-            </button>
-        </div>
-
-        <div class="sidebar-body">
-            <NavMenu Expanded="_sidebarExpanded" />
-        </div>
+        <NavMenu Expanded="_sidebarExpanded" OnToggle="ToggleSidebar" />
     </aside>
 
     <main class="layout-content">

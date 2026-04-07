@@ -1,61 +1,54 @@
 @using Microsoft.AspNetCore.Components
 
 <div class="nav-shell @(Expanded ? "expanded" : "collapsed")">
-    <div class="nav-brand">
-        <div class="nav-brand-mark">G8</div>
+    <button class="nav-toggle-button" type="button" @onclick="OnToggle">
+        <span class="nav-emoji">☰</span>
         @if (Expanded)
         {
+            <span>功能選單</span>
+        }
+    </button>
+
+    @if (Expanded)
+    {
+        <div class="nav-brand">
+            <div class="nav-brand-mark">G8</div>
             <div class="nav-brand-text">
                 <strong>POS Demo</strong>
                 <span>前台 / 後台</span>
             </div>
-        }
-    </div>
+        </div>
 
-    <div class="nav-section-label">櫃台</div>
-    <NavLink class="nav-button nav-front" href="" Match="NavLinkMatch.All">
-        <span class="nav-emoji">🧋</span>
-        @if (Expanded)
-        {
-            <span>前台點餐</span>
-        }
-    </NavLink>
+        <div class="nav-buttons-grid">
+            <NavLink class="nav-button nav-front" href="" Match="NavLinkMatch.All">
+                <span class="nav-emoji">🧋</span>
+                <span>前台點餐</span>
+            </NavLink>
 
-    <div class="nav-section-label">訂單</div>
-    <NavLink class="nav-button nav-orders" href="admin/orders">
-        <span class="nav-emoji">📋</span>
-        @if (Expanded)
-        {
-            <span>訂單管理</span>
-        }
-    </NavLink>
+            <NavLink class="nav-button nav-orders" href="admin/orders">
+                <span class="nav-emoji">📋</span>
+                <span>訂單管理</span>
+            </NavLink>
 
-    <div class="nav-section-label">後台</div>
-    <NavLink class="nav-button nav-products" href="admin/products">
-        <span class="nav-emoji">🥤</span>
-        @if (Expanded)
-        {
-            <span>後台商品</span>
-        }
-    </NavLink>
+            <NavLink class="nav-button nav-products" href="admin/products">
+                <span class="nav-emoji">🥤</span>
+                <span>後台商品</span>
+            </NavLink>
 
-    <NavLink class="nav-button nav-categories" href="admin/categories">
-        <span class="nav-emoji">🗂️</span>
-        @if (Expanded)
-        {
-            <span>後台分類</span>
-        }
-    </NavLink>
+            <NavLink class="nav-button nav-categories" href="admin/categories">
+                <span class="nav-emoji">🗂️</span>
+                <span>後台分類</span>
+            </NavLink>
 
-    <NavLink class="nav-button nav-reports" href="admin/reports">
-        <span class="nav-emoji">📈</span>
-        @if (Expanded)
-        {
-            <span>後台報表</span>
-        }
-    </NavLink>
+            <NavLink class="nav-button nav-reports" href="admin/reports">
+                <span class="nav-emoji">📈</span>
+                <span>後台報表</span>
+            </NavLink>
+        </div>
+    }
 </div>
 
 @code {
     [Parameter] public bool Expanded { get; set; }
+    [Parameter] public EventCallback OnToggle { get; set; }
 }
