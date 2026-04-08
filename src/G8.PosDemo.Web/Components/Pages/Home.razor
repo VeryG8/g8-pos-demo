@@ -11,6 +11,7 @@
     private readonly List<string> _sugarOptions = ["正常糖", "少糖", "半糖", "微糖", "無糖"];
     private readonly List<string> _iceOptions = ["正常冰", "少冰", "微冰", "去冰", "熱"];
     private readonly List<string> _paymentOptions = ["現金", "Line Pay", "街口", "信用卡"];
+    private readonly List<string> _orderTypeOptions = ["外帶", "外送"];
     private readonly List<OrderLine> _cart = [];
     private readonly List<CompletedOrder> _recentOrders = [];
     private readonly List<ProductCategoryViewModel> _categories = [];
@@ -23,6 +24,7 @@
     private bool _addPearl;
     private bool _addCoconut;
     private string _selectedPayment = "現金";
+    private string _selectedOrderType = "外帶";
     private string _customerPhone = string.Empty;
     private string _pickupNumber = "001";
     private string _note = string.Empty;
@@ -31,7 +33,8 @@
     private bool _showCheckoutConfirm;
     private string _status = "待點餐";
     private string _searchText = string.Empty;
-    private string _promotionName = "買五送一";
+    private string _promotionName = "外帶買五送一";
+    private bool _takeoutPromotionEnabled = true;
     private int _nextOrderNumber = 1001;
     private string _currentOrderCode = "A1001";
     private int? _editingDraftOrderId;
@@ -318,7 +321,8 @@
 
     private decimal GrossAmount => _cart.Sum(x => x.Subtotal);
     private int TotalQuantity => _cart.Sum(x => x.Quantity);
-    private int PromotionFreeCupCount => TotalQuantity / 6;
+    private bool PromotionApplicable => _takeoutPromotionEnabled && _selectedOrderType == "外帶";
+    private int PromotionFreeCupCount => PromotionApplicable ? TotalQuantity / 6 : 0;
     private decimal PromotionDiscountAmount => CalculatePromotionDiscount();
     private decimal TotalAmount => Math.Max(0, GrossAmount - PromotionDiscountAmount - _discountAmount);
     private decimal ChangeAmount => Math.Max(0, _receivedAmount - TotalAmount);
@@ -368,22 +372,17 @@
 }
 
 <div class="pos-shell compact-shell tighter-shell">
-    <div class="top-bar">
+    <div class="top-bar simple-top-bar">
         <div>
             <div class="eyebrow">Beverage Counter Demo</div>
             <h1>G8 POS 櫃台 Demo</h1>
-        </div>
-        <div class="top-bar-right">
-            <div class="mini-stat"><span>訂單號</span><strong>@_currentOrderCode</strong></div>
-            <div class="mini-stat"><span>取餐號</span><strong>@_pickupNumber</strong></div>
-            <div class="mini-stat status-mini"><span>狀態</span><strong>@_status</strong></div>
         </div>
     </div>
 
     <div class="summary-strip slim-summary">
         <div class="summary-card accent-orange"><span>杯數</span><strong>@TotalQuantity</strong></div>
         <div class="summary-card accent-green"><span>總金額</span><strong>@TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
-        <div class="summary-card accent-blue"><span>活動優惠</span><strong>@(PromotionFreeCupCount > 0 ? $"{_promotionName} -{PromotionDiscountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}" : "未達門檻")</strong></div>
+        <div class="summary-card accent-blue"><span>活動優惠</span><strong>@(PromotionApplicable ? (PromotionFreeCupCount > 0 ? $"{_promotionName} -{PromotionDiscountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}" : "已啟用，未達門檻") : "目前不適用")</strong></div>
     </div>
 
     <div class="pos-grid full-height-grid">
@@ -505,12 +504,28 @@
             <div class="cart-header">
                 <div>
                     <h2>當前訂單</h2>
-                    <div class="meta">@(_editingDraftOrderId.HasValue ? "正在續編暫存單" : "外帶專用櫃台")</div>
+                    <div class="meta">@(_editingDraftOrderId.HasValue ? "正在續編暫存單" : "點餐中")</div>
                 </div>
                 <button class="ghost-action" @onclick="ClearCart">清空</button>
             </div>
 
             <div class="customer-block">
+                <div class="payment-row">
+                    @foreach (var orderType in _orderTypeOptions)
+                    {
+                        <button class="option-chip compact @(orderType == _selectedOrderType ? "active" : null)" @onclick="() => _selectedOrderType = orderType">@orderType</button>
+                    }
+                </div>
+                <div class="promotion-toggle-card">
+                    <div>
+                        <strong>@_promotionName</strong>
+                        <div class="meta">僅限外帶啟用，外送不套用。</div>
+                    </div>
+                    <label class="switch-row">
+                        <input type="checkbox" @bind="_takeoutPromotionEnabled" />
+                        <span>@(_takeoutPromotionEnabled ? "啟用" : "停用")</span>
+                    </label>
+                </div>
                 <input class="search-box full-input" @bind="_customerPhone" placeholder="會員手機 / 電話" />
                 <div class="payment-row">
                     @foreach (var payment in _paymentOptions)
@@ -555,9 +570,10 @@
 
             <div class="checkout-box pinned-footer">
                 <div class="checkout-summary">
+                    <div class="total-row"><span>訂單類型</span><strong>@_selectedOrderType</strong></div>
                     <div class="total-row"><span>總杯數</span><strong>@TotalQuantity</strong></div>
                     <div class="total-row"><span>原始金額</span><strong>@GrossAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
-                    <div class="total-row"><span>@_promotionName</span><strong>@(PromotionFreeCupCount > 0 ? $"-{PromotionDiscountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}" : "未達門檻")</strong></div>
+                    <div class="total-row"><span>@_promotionName</span><strong>@(PromotionApplicable ? (PromotionFreeCupCount > 0 ? $"-{PromotionDiscountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}" : "已啟用，未達門檻") : "不適用")</strong></div>
                     <div class="total-row"><span>手動折扣</span><strong>@_discountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                     <div class="total-row"><span>付款方式</span><strong>@_selectedPayment</strong></div>
                     <div class="total-row"><span>實收金額</span><strong>@_receivedAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
@@ -580,8 +596,9 @@
                 </div>
 
                 <div class="checkout-summary modal-summary">
+                    <div class="total-row"><span>訂單類型</span><strong>@_selectedOrderType</strong></div>
                     <div class="total-row"><span>應收金額</span><strong>@TotalAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
-                    <div class="total-row"><span>@_promotionName</span><strong>@(PromotionFreeCupCount > 0 ? $"已折抵 {PromotionDiscountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}" : "未達門檻")</strong></div>
+                    <div class="total-row"><span>@_promotionName</span><strong>@(PromotionApplicable ? (PromotionFreeCupCount > 0 ? $"已折抵 {PromotionDiscountAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))}" : "已啟用，未達門檻") : "不適用")</strong></div>
                     <div class="total-row"><span>實收金額</span><strong>@_receivedAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                     <div class="total-row"><span>找零</span><strong>@ChangeAmount.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong></div>
                     <div class="total-row"><span>付款方式</span><strong>@_selectedPayment</strong></div>

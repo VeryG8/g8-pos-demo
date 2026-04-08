@@ -36,6 +36,9 @@ button, select, input { font: inherit; }
     gap: 8px;
     min-width: 320px;
 }
+.simple-top-bar {
+    justify-content: flex-start;
+}
 
 .mini-stat {
     background: white;
@@ -257,6 +260,21 @@ button, select, input { font: inherit; }
 
 .ghost-action { background: #e2e8f0; padding: 7px 10px; }
 .customer-block { display: grid; gap: 6px; margin-bottom: 6px; }
+.promotion-toggle-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #eff6ff;
+    border-radius: 12px;
+}
+.switch-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+}
 .payment-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
 .cart-list, .recent-orders-list { display: flex; flex-direction: column; gap: 8px; }
