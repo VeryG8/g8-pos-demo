@@ -48,7 +48,7 @@
 }
 
 :global(.nav-shell.expanded .nav-toggle-button) {
-    justify-content: flex-start;
+    justify-content: center;
     padding: 0 10px;
 }
 
@@ -91,6 +91,7 @@
 
 :global(.nav-buttons-grid) {
     display: grid;
+    grid-template-columns: 1fr;
     gap: 10px;
 }
 
@@ -102,6 +103,7 @@
     padding: 12px 14px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 12px;
     font-weight: 800;
     box-shadow: 0 10px 22px rgba(15,23,42,0.18);
@@ -123,6 +125,10 @@
 
 :global(.nav-button.active) {
     box-shadow: inset 0 0 0 3px rgba(255,255,255,0.34), 0 10px 24px rgba(15,23,42,0.22);
+}
+
+:global(.nav-shell.expanded .nav-button) {
+    justify-content: center;
 }
 
 @media (max-width: 900px) {
