@@ -10,6 +10,9 @@
     private decimal _dailyRevenue;
     private int _orderCount;
     private string _topProduct = "尚無資料";
+    private decimal _promotionDiscountTotal;
+    private int _takeoutCount;
+    private int _deliveryCount;
 
     protected override async Task OnInitializedAsync()
     {
@@ -23,6 +26,9 @@
 
         _dailyRevenue = orders.Sum(x => x.TotalAmount);
         _orderCount = orders.Count;
+        _promotionDiscountTotal = orders.Sum(x => x.PromotionDiscountAmount);
+        _takeoutCount = orders.Count(x => x.OrderType == "Takeout");
+        _deliveryCount = orders.Count(x => x.OrderType == "Delivery");
 
         var topItem = await Db.OrderItems
             .AsNoTracking()
@@ -60,6 +66,24 @@
             <span>人氣商品</span>
             <strong>@_topProduct</strong>
             <small>依歷史訂單項目統計</small>
+        </div>
+
+        <div class="report-panel">
+            <span>今日優惠折抵</span>
+            <strong>@_promotionDiscountTotal.ToString("C0", CultureInfo.GetCultureInfo("zh-TW"))</strong>
+            <small>活動總折扣</small>
+        </div>
+
+        <div class="report-panel">
+            <span>外帶訂單</span>
+            <strong>@_takeoutCount</strong>
+            <small>外帶筆數</small>
+        </div>
+
+        <div class="report-panel">
+            <span>外送訂單</span>
+            <strong>@_deliveryCount</strong>
+            <small>外送筆數</small>
         </div>
     </div>
 </div>

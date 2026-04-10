@@ -5,6 +5,9 @@ public class OrderEntity
     public int Id { get; set; }
     public string OrderCode { get; set; } = string.Empty;
     public string PaymentMethod { get; set; } = string.Empty;
+    public string OrderType { get; set; } = "Takeout";
+    public string? PromotionName { get; set; }
+    public decimal PromotionDiscountAmount { get; set; }
     public string? CustomerPhone { get; set; }
     public decimal TotalAmount { get; set; }
     public string? OrderSummary { get; set; }
